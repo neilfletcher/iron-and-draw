@@ -324,7 +324,7 @@
     <section class="card">
       <div class="card-head">
         <div>
-          <p class="eyebrow">All 72 sessions</p>
+          <p class="eyebrow" id="browseEyebrow">All sessions</p>
           <h2>Browse the programme</h2>
         </div>
       </div>
@@ -505,23 +505,44 @@ var FIREBASE_SDK_VERSION = "12.19.0";
 var STARTING_MAXES = { backSquat:60, deadlift:90, benchPress:50, barbellRow:60 };
 
 var BLOCKS = [
-  { n:1, name:"Foundation", weekStart:1,
+  { n:1, name:"Foundation", weekStart:1, weeks:6,
     pcts:[70,72.5,75,77.5,80,60],
     scheme:["3 x 8","3 x 8","3 x 8","3 x 8","3 x 8","3 x 8"],
     accessoryReps:"3 x 12-15", plank:"30-45 sec", carry:"15-20m" },
-  { n:2, name:"Build", weekStart:7,
+  { n:2, name:"Build", weekStart:7, weeks:6,
     pcts:[75,77.5,80,82.5,85,65],
     scheme:["4 x 6","4 x 6","4 x 6","4 x 6","4 x 6","4 x 6"],
     accessoryReps:"3 x 10-12", plank:"45-60 sec", carry:"20-25m" },
-  { n:3, name:"Strength", weekStart:13,
+  { n:3, name:"Strength", weekStart:13, weeks:6,
     pcts:[80,82.5,85,87.5,90,70],
     scheme:["5 x 5","5 x 5","5 x 5","5 x 5","4 x 4","4 x 4"],
     accessoryReps:"3 x 8-10", plank:"60+ sec", carry:"25-30m" },
-  { n:4, name:"Peak &amp; Archery Integration", weekStart:19,
+  { n:4, name:"Peak &amp; Archery Integration", weekStart:19, weeks:6,
     pcts:[85,87.5,90,92.5,95,60],
     scheme:["3 x 3","3 x 3","3 x 3","3 x 3","2 x 2","2 x 2"],
-    accessoryReps:"3 x 6-8 (heavier) or extended holds", plank:"60-90 sec", carry:"20m (heavier load)" }
+    accessoryReps:"3 x 6-8 (heavier) or extended holds", plank:"60-90 sec", carry:"20m (heavier load)" },
+  { n:5, name:"Foundation II", weekStart:25, weeks:6,
+    pcts:[70,72.5,75,77.5,80,60],
+    scheme:["3 x 8","3 x 8","3 x 8","3 x 8","3 x 8","3 x 8"],
+    accessoryReps:"3 x 12-15", plank:"30-45 sec", carry:"15-20m" },
+  { n:6, name:"Build II", weekStart:31, weeks:6,
+    pcts:[75,77.5,80,82.5,85,65],
+    scheme:["4 x 6","4 x 6","4 x 6","4 x 6","4 x 6","4 x 6"],
+    accessoryReps:"3 x 10-12", plank:"45-60 sec", carry:"20-25m" },
+  { n:7, name:"Strength II", weekStart:37, weeks:6,
+    pcts:[80,82.5,85,87.5,90,70],
+    scheme:["5 x 5","5 x 5","5 x 5","5 x 5","4 x 4","4 x 4"],
+    accessoryReps:"3 x 8-10", plank:"60+ sec", carry:"25-30m" },
+  { n:8, name:"Peak &amp; Archery Integration II", weekStart:43, weeks:6,
+    pcts:[85,87.5,90,92.5,95,60],
+    scheme:["3 x 3","3 x 3","3 x 3","3 x 3","2 x 2","2 x 2"],
+    accessoryReps:"3 x 6-8 (heavier) or extended holds", plank:"60-90 sec", carry:"20m (heavier load)" },
+  { n:9, name:"Taper &amp; Retest", weekStart:49, weeks:4,
+    pcts:[75,70,65,60],
+    scheme:["3 x 5","3 x 5","3 x 4","3 x 3"],
+    accessoryReps:"3 x 10-12", plank:"45-60 sec", carry:"20-25m" }
 ];
+var TOTAL_WEEKS = BLOCKS[BLOCKS.length-1].weekStart + BLOCKS[BLOCKS.length-1].weeks - 1;
 
 var DAY_EXERCISES = {
   A: [
@@ -557,14 +578,14 @@ var TREND_LIFTS = [
 
 function roundPlate(x){ return Math.round(x/2.5)*2.5; }
 
-/* Flatten to 72 sessions, index 0..71 */
+/* Flatten to one row per week per block, 3 sessions/week */
 var SESSIONS = [];
 (function build(){
   var idx = 0;
   BLOCKS.forEach(function(block){
-    for(var wi=0; wi<6; wi++){
+    for(var wi=0; wi<block.weeks; wi++){
       var week = block.weekStart + wi;
-      var deload = (wi === 5);
+      var deload = (wi === block.weeks-1);
       ["A","B","C"].forEach(function(day){
         SESSIONS.push({
           index: idx++, week: week, day: day, block: block, weekIdx: wi,
@@ -878,7 +899,7 @@ function renderSessionCard(){
   var isCurrent = state.viewIndex === state.currentIndex;
 
   document.getElementById("sessBlockLabel").textContent = "Block "+sess.block.n+": "+stripAmp(sess.block.name) + (sess.deload ? " · Deload week" : "");
-  document.getElementById("sessTitle").innerHTML = "Week "+sess.week+" of 24 &middot; "+DAY_TITLES[sess.day];
+  document.getElementById("sessTitle").innerHTML = "Week "+sess.week+" of "+TOTAL_WEEKS+" &middot; "+DAY_TITLES[sess.day];
   document.getElementById("prevBtn").disabled = state.viewIndex===0;
   document.getElementById("nextBtn").disabled = state.viewIndex===SESSIONS.length-1;
   document.getElementById("todayBtn").style.visibility = isCurrent ? "hidden" : "visible";
@@ -1049,7 +1070,7 @@ function renderHeader(){
   for(var i=0;i<SESSIONS.length;i++){ var d = state.sessionDocs[sessionId(SESSIONS[i])]; if(d && d.completed) done++; }
   var cur = SESSIONS[state.currentIndex];
   document.getElementById("headerChipText").textContent =
-    "Week "+cur.week+" of 24 · "+done+" / 72 sessions logged";
+    "Week "+cur.week+" of "+TOTAL_WEEKS+" · "+done+" / "+SESSIONS.length+" sessions logged";
   document.getElementById("headerDot").style.background = done>0 ? "var(--good)" : "var(--text-faint)";
 }
 
@@ -1161,7 +1182,8 @@ function drawLineChart(series, opts){
     label.textContent = Math.round(yv*10)/10;
     svg.appendChild(label);
   }
-  [0,6,12,18,24].forEach(function(wk){
+  var tickWeeks = [0, Math.round(TOTAL_WEEKS*0.25), Math.round(TOTAL_WEEKS*0.5), Math.round(TOTAL_WEEKS*0.75), TOTAL_WEEKS];
+  tickWeeks.forEach(function(wk){
     var idx = (wk===0?0:wk*3-1);
     if(idx>xMax) idx=xMax;
     var xx = px(idx);
@@ -1290,7 +1312,7 @@ function computeStreak(){
 function computeBlockBreakdown(){
   return BLOCKS.map(function(block){
     var completed=0, skipped=0, pending=0;
-    for(var wi=0; wi<6; wi++){
+    for(var wi=0; wi<block.weeks; wi++){
       var week = block.weekStart+wi;
       ["A","B","C"].forEach(function(day){
         var sess = SESSIONS.find(function(s){ return s.week===week && s.day===day; });
@@ -1300,7 +1322,7 @@ function computeBlockBreakdown(){
         else pending++;
       });
     }
-    return { name: stripAmp(block.name), completed:completed, skipped:skipped, pending:pending, total:18 };
+    return { name: stripAmp(block.name), completed:completed, skipped:skipped, pending:pending, total:block.weeks*3 };
   });
 }
 
@@ -1474,9 +1496,9 @@ function renderConsistency(){
   var grid = document.getElementById("consistencyGrid");
   grid.innerHTML="";
   var p = computeProgressStats();
-  var weeksElapsed = Math.min(24, Math.ceil((p.completed+p.skipped)/3));
+  var weeksElapsed = Math.min(TOTAL_WEEKS, Math.ceil((p.completed+p.skipped)/3));
   grid.appendChild(statTile("Current streak", streak+" session"+(streak===1?"":"s")));
-  grid.appendChild(statTile("Weeks worked through", weeksElapsed+" / 24"));
+  grid.appendChild(statTile("Weeks worked through", weeksElapsed+" / "+TOTAL_WEEKS));
 
   var host = document.getElementById("blockStats");
   host.innerHTML="";
@@ -1508,14 +1530,16 @@ function renderStats(){
 function renderBrowser(){
   var host = document.getElementById("blockBrowser");
   host.innerHTML = "";
+  var eyebrow = document.getElementById("browseEyebrow");
+  if(eyebrow) eyebrow.textContent = "All "+SESSIONS.length+" sessions";
   BLOCKS.forEach(function(block, bi){
     var group = document.createElement("div"); group.className="block-group";
     var head = document.createElement("div"); head.className="block-head"+(bi===0?" open":"");
     head.innerHTML =
-      '<span>Block '+block.n+': '+stripAmp(block.name)+' (Weeks '+block.weekStart+'-'+(block.weekStart+5)+')</span>'+
+      '<span>Block '+block.n+': '+stripAmp(block.name)+' (Weeks '+block.weekStart+'-'+(block.weekStart+block.weeks-1)+')</span>'+
       '<svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     var body = document.createElement("div"); body.className="block-body"+(bi===0?" open":"");
-    for(var wi=0; wi<6; wi++){
+    for(var wi=0; wi<block.weeks; wi++){
       var week = block.weekStart+wi;
       var wRow = document.createElement("div"); wRow.className="week-row";
       var wLabel = document.createElement("div"); wLabel.className="wk-label"; wLabel.textContent="Wk "+week;
