@@ -69,6 +69,20 @@
   .stat-chip b{color:var(--text); font-weight:600;}
   .stat-chip .dot{width:6px;height:6px;border-radius:50%;background:var(--good);}
 
+  /* ---- tabs ---- */
+  .tabbar{
+    display:flex; gap:6px; background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:6px; box-shadow:var(--shadow); position:sticky; top:12px; z-index:5;
+  }
+  .tab-btn{
+    flex:1; text-align:center; padding:10px 12px; border-radius:8px; border:none; background:transparent;
+    color:var(--text-muted); font-weight:600; font-size:13.5px; cursor:pointer; font-family:inherit;
+  }
+  .tab-btn:hover{background:var(--surface-2);}
+  .tab-btn.active{background:var(--brand); color:var(--brand-ink);}
+  .tab-panel{display:none; flex-direction:column; gap:20px;}
+  .tab-panel.active{display:flex;}
+
   /* ---- cards ---- */
   .card{
     background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
@@ -136,7 +150,7 @@
     width:100%; padding:9px 10px; border-radius:8px; border:1px solid var(--border);
     background:var(--bg); color:var(--text); font-size:14px;
   }
-  .sess-actions{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;}
+  .sess-actions{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; align-items:center;}
   .btn{
     border-radius:9px; padding:10px 16px; font-size:13.5px; font-weight:600; cursor:pointer; border:1px solid transparent;
   }
@@ -158,7 +172,7 @@
   }
   .empty-note{color:var(--text-faint); font-size:13px; padding:24px 0; text-align:center;}
 
-  /* ---- maxes ---- */
+  /* ---- maxes / stat tiles ---- */
   .max-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:12px;}
   .max-item{border:1px solid var(--border); border-radius:10px; padding:12px; background:var(--surface-2);}
   .max-item .lift-name{font-size:12.5px; font-weight:600; color:var(--text-muted); margin-bottom:6px;}
@@ -172,6 +186,19 @@
   .epley .field input{width:90px;}
   .epley-result{font-size:13px; color:var(--text-muted); flex:1 1 160px;}
   .epley-result b{color:var(--brand); font-size:15px;}
+
+  /* ---- progress bar ---- */
+  .progress-bar{height:10px; border-radius:6px; background:var(--surface-2); overflow:hidden; margin-top:14px;}
+  .progress-bar-fill{height:100%; background:var(--brand); border-radius:6px;}
+
+  /* ---- consistency ---- */
+  .stack-bar{display:flex; height:14px; border-radius:7px; overflow:hidden; background:var(--surface-2);}
+  .stack-seg.completed{background:var(--good);}
+  .stack-seg.skipped{background:var(--warn);}
+  .stack-seg.pending{background:var(--border);}
+  .block-stat-row{margin-bottom:14px;}
+  .block-stat-row:last-child{margin-bottom:0;}
+  .block-stat-head{display:flex; justify-content:space-between; font-size:12.5px; color:var(--text-muted); margin-bottom:6px; gap:8px; flex-wrap:wrap;}
 
   /* ---- browser ---- */
   .block-group{border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:10px;}
@@ -197,11 +224,6 @@
   .dot.pending{background:var(--text-faint);}
   .dot.done{background:var(--good);}
   .dot.skipped{background:var(--warn);}
-
-  .offline-banner{
-    background:var(--warn-soft); color:var(--warn); border:1px solid var(--warn); border-radius:10px;
-    padding:10px 14px; font-size:13px; display:none;
-  }
 
   @media (max-width:560px){
     .ex-row{grid-template-columns:1fr;}
@@ -230,122 +252,253 @@
     <div class="stat-chip" id="headerChip"><span class="dot" id="headerDot"></span> <span id="headerChipText">Loading&hellip;</span></div>
   </header>
 
-  <section class="card" id="sessionCard">
-    <div class="card-head">
-      <div>
-        <p class="eyebrow" id="sessBlockLabel">Block</p>
-        <h2 id="sessTitle">Week 1 &middot; Day A: Squat + Pull</h2>
-      </div>
-      <div class="sess-nav">
-        <button class="nav-btn" id="prevBtn" title="Previous session" aria-label="Previous session">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <button class="today-btn" id="todayBtn">Jump to current</button>
-        <button class="nav-btn" id="nextBtn" title="Next session" aria-label="Next session">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-      </div>
-    </div>
-    <p class="muted" id="sessSub">5-minute warm-up first: arm circles, band pull-aparts, slow external rotations with a light plate.</p>
-    <div id="exList" class="ex-list"></div>
+  <nav class="tabbar">
+    <button class="tab-btn active" data-tab="today" type="button">Today</button>
+    <button class="tab-btn" data-tab="stats" type="button">Stats</button>
+    <button class="tab-btn" data-tab="account" type="button">Account</button>
+  </nav>
 
-    <div class="sess-footer">
-      <div class="field">
-        <label for="bwInput">Bodyweight (kg)</label>
-        <input type="number" step="0.1" id="bwInput" placeholder="e.g. 85.4">
-      </div>
-      <div class="field">
-        <label for="feelInput">How it felt</label>
-        <input type="text" id="feelInput" placeholder="Optional note">
-      </div>
-    </div>
+  <div class="tab-panel active" id="panelToday">
 
-    <div class="sess-actions">
-      <button class="btn btn-primary" id="completeBtn">Mark session complete</button>
-      <button class="btn btn-ghost" id="reopenBtn" style="display:none;">Re-open session</button>
-      <button class="btn btn-ghost" id="skipBtn">Skip this session</button>
-      <span class="save-flag" id="saveFlag"></span>
-    </div>
-  </section>
-
-  <section class="card">
-    <div class="card-head">
-      <div>
-        <p class="eyebrow">Progress</p>
-        <h2>Estimated one-rep max</h2>
+    <section class="card" id="sessionCard">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow" id="sessBlockLabel">Block</p>
+          <h2 id="sessTitle">Week 1 &middot; Day A: Squat + Pull</h2>
+        </div>
+        <div class="sess-nav">
+          <button class="nav-btn" id="prevBtn" title="Previous session" aria-label="Previous session">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="today-btn" id="todayBtn">Jump to current</button>
+          <button class="nav-btn" id="nextBtn" title="Next session" aria-label="Next session">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
       </div>
-    </div>
-    <p class="muted">Calculated from what you actually log with the Epley formula: weight &times; (1 + reps &divide; 30). Only sessions with a logged weight and reps appear.</p>
-    <div class="chart-legend" id="oneRmLegend"></div>
-    <div class="chart-box" id="oneRmChartBox"></div>
-  </section>
+      <p class="muted" id="sessSub">5-minute warm-up first: arm circles, band pull-aparts, slow external rotations with a light plate.</p>
+      <div id="exList" class="ex-list"></div>
 
-  <section class="card">
-    <div class="card-head">
-      <div>
-        <p class="eyebrow">Progress</p>
-        <h2>Bodyweight</h2>
+      <div class="sess-footer">
+        <div class="field">
+          <label for="bwInput">Bodyweight (kg)</label>
+          <input type="number" step="0.1" id="bwInput" placeholder="e.g. 85.4">
+        </div>
+        <div class="field">
+          <label for="feelInput">How it felt</label>
+          <input type="text" id="feelInput" placeholder="Optional note">
+        </div>
       </div>
-    </div>
-    <div class="chart-box" id="bwChartBox"></div>
-  </section>
 
-  <section class="card">
-    <div class="card-head">
-      <div>
-        <p class="eyebrow">Retesting</p>
-        <h2>Your current maxes</h2>
+      <div class="sess-actions">
+        <button class="btn btn-primary" id="completeBtn">Mark session complete</button>
+        <button class="btn btn-ghost" id="reopenBtn" style="display:none;">Re-open session</button>
+        <button class="btn btn-ghost" id="skipBtn">Skip this session</button>
+        <span class="save-flag" id="saveFlag"></span>
       </div>
-    </div>
-    <p class="muted">Update these whenever you retest (every deload week is the natural point). Every session that isn't logged yet recalculates its target weight from these numbers immediately.</p>
-    <div class="max-grid" id="maxGrid"></div>
-    <div class="epley">
-      <p class="eyebrow">Estimate a new max from a set</p>
-      <div class="epley-row">
-        <div class="field"><label for="epW">Weight (kg)</label><input type="number" step="0.5" id="epW"></div>
-        <div class="field"><label for="epR">Reps</label><input type="number" step="1" id="epR"></div>
-        <div class="epley-result" id="epResult">Enter a weight and reps from a hard set (1-2 reps in reserve).</div>
-      </div>
-    </div>
-    <div class="sess-actions">
-      <button class="btn btn-primary" id="saveMaxesBtn">Save new maxes</button>
-      <span class="save-flag" id="maxSaveFlag"></span>
-    </div>
-  </section>
+    </section>
 
-  <section class="card">
-    <div class="card-head">
-      <div>
-        <p class="eyebrow">All 72 sessions</p>
-        <h2>Browse the programme</h2>
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">Retesting</p>
+          <h2>Your current maxes</h2>
+        </div>
       </div>
-    </div>
-    <div id="blockBrowser"></div>
-  </section>
-
-  <section class="card">
-    <div class="card-head">
-      <div>
-        <p class="eyebrow">Backup</p>
-        <h2>Move your data between devices</h2>
+      <p class="muted">Update these whenever you retest (every deload week is the natural point). Every session that isn't logged yet recalculates its target weight from these numbers immediately.</p>
+      <div class="max-grid" id="maxGrid"></div>
+      <div class="epley">
+        <p class="eyebrow">Estimate a new max from a set</p>
+        <div class="epley-row">
+          <div class="field"><label for="epW">Weight (kg)</label><input type="number" step="0.5" id="epW"></div>
+          <div class="field"><label for="epR">Reps</label><input type="number" step="1" id="epR"></div>
+          <div class="epley-result" id="epResult">Enter a weight and reps from a hard set (1-2 reps in reserve).</div>
+        </div>
       </div>
-    </div>
-    <p class="muted">Everything here is saved only in this browser, on this device, there's no account or server behind it. Download a backup before switching browsers or devices, then restore it on the other one.</p>
-    <div class="backup-row">
-      <button class="btn btn-primary" id="downloadBackupBtn">Download backup</button>
-      <label class="btn btn-ghost" style="cursor:pointer;">Restore from backup
-        <input type="file" accept="application/json" id="restoreInput" style="display:none;">
-      </label>
-      <span class="save-flag" id="backupFlag"></span>
-    </div>
-  </section>
+      <div class="sess-actions">
+        <button class="btn btn-primary" id="saveMaxesBtn">Save new maxes</button>
+        <span class="save-flag" id="maxSaveFlag"></span>
+      </div>
+    </section>
 
-  <p class="footnote">Iron &amp; Draw &middot; stored locally in this browser only</p>
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">All 72 sessions</p>
+          <h2>Browse the programme</h2>
+        </div>
+      </div>
+      <div id="blockBrowser"></div>
+    </section>
+
+  </div>
+
+  <div class="tab-panel" id="panelStats">
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">Overview</p>
+          <h2>Programme progress</h2>
+        </div>
+      </div>
+      <div class="max-grid" id="progressGrid"></div>
+      <div class="progress-bar"><div class="progress-bar-fill" id="progressBarFill" style="width:0%"></div></div>
+      <p class="muted" id="progressPace" style="margin-top:12px;"></p>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">Progress</p>
+          <h2>Estimated one-rep max</h2>
+        </div>
+      </div>
+      <p class="muted">Calculated from what you actually log with the Epley formula: weight &times; (1 + reps &divide; 30). Only sessions with a logged weight and reps appear.</p>
+      <div class="chart-legend" id="statsOneRmLegend"></div>
+      <div class="chart-box" id="statsOneRmChartBox"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">Progress</p>
+          <h2>Combined strength total</h2>
+        </div>
+      </div>
+      <p class="muted">Back Squat + Deadlift + Bench Press + Barbell Row, each taken as its latest logged estimated max. Appears once you've logged all four at least once.</p>
+      <div class="chart-box" id="totalChartBox"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">Progress</p>
+          <h2>Strength ratios</h2>
+        </div>
+      </div>
+      <p class="muted">Deadlift relative to Back Squat.</p>
+      <div class="chart-box" id="ratioDlSquatBox"></div>
+      <p class="muted" style="margin-top:16px;">Back Squat relative to bodyweight.</p>
+      <div class="chart-box" id="ratioSquatBwBox"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">Volume</p>
+          <h2>Total weight moved</h2>
+        </div>
+      </div>
+      <p class="muted">Weight &times; reps, added up across every logged set.</p>
+      <div class="max-grid" id="tonnageGrid"></div>
+      <div class="chart-box" id="tonnageChartBox" style="margin-top:14px;"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">Progress</p>
+          <h2>Bodyweight</h2>
+        </div>
+      </div>
+      <div class="chart-box" id="statsBwChartBox"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">Records</p>
+          <h2>Personal records</h2>
+        </div>
+      </div>
+      <div class="ex-list" id="prList"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">Consistency</p>
+          <h2>Training consistency</h2>
+        </div>
+      </div>
+      <div class="max-grid" id="consistencyGrid"></div>
+      <div id="blockStats" style="margin-top:16px;"></div>
+    </section>
+
+  </div>
+
+  <div class="tab-panel" id="panelAccount">
+
+    <section class="card" id="accountCard">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">Account</p>
+          <h2>Sign in to sync across devices</h2>
+        </div>
+      </div>
+      <div id="acctNotConfigured" style="display:none;">
+        <p class="muted">Sign-in isn't set up for this copy yet. See the setup notes that came with this file for how to turn it on, it takes about ten minutes and stays free. Everything above still saves normally on this device without it.</p>
+      </div>
+      <div id="acctSignedOut" style="display:none;">
+        <p class="muted">Sign in with Google to keep this in step everywhere you open it. Your data is private to your account; nobody else can read or change it.</p>
+        <div class="sess-actions">
+          <button class="btn btn-primary" id="signInBtn">Sign in with Google</button>
+          <span class="save-flag" id="acctFlag"></span>
+        </div>
+      </div>
+      <div id="acctSignedIn" style="display:none;">
+        <p class="muted">Signed in as <b id="acctEmail"></b>. Changes made here sync automatically; open this page anywhere else and sign in with the same account to see them.</p>
+        <div class="sess-actions">
+          <button class="btn btn-ghost" id="signOutBtn">Sign out</button>
+          <span class="save-flag" id="acctStatus"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">Backup</p>
+          <h2>Move your data between devices manually</h2>
+        </div>
+      </div>
+      <p class="muted">A one-off manual copy, or a fallback if you're not signed in. Download a backup before switching browsers or devices, then restore it on the other one.</p>
+      <div class="backup-row">
+        <button class="btn btn-primary" id="downloadBackupBtn">Download backup</button>
+        <label class="btn btn-ghost" style="cursor:pointer;">Restore from backup
+          <input type="file" accept="application/json" id="restoreInput" style="display:none;">
+        </label>
+        <span class="save-flag" id="backupFlag"></span>
+      </div>
+    </section>
+
+  </div>
+
+  <p class="footnote">Iron &amp; Draw &middot; stored locally in this browser, and in your account if you sign in</p>
 </div>
 
 <script>
 (function(){
 "use strict";
+
+/* ============================================================
+   OPTIONAL SIGN-IN. Paste your Firebase config below to turn on
+   "Sign in with Google" and automatic cross-device sync. Leave every
+   value as "" to run in local-only mode; everything else still works.
+   See the setup notes that came with this file for how to get these
+   six values (Firebase console -> Project settings -> Your apps).
+   ============================================================ */
+var FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAGycakyxkmGL2QsXe9Och-Ib9ClxlTI0w",
+  authDomain: "iron-and-draw.firebaseapp.com",
+  projectId: "iron-and-draw",
+  storageBucket: "iron-and-draw.firebasestorage.app",
+  messagingSenderId: "597002017905",
+  appId: "1:597002017905:web:dcef455336871fd2914fd0"
+};
+var FIREBASE_SDK_VERSION = "12.19.0";
+/* ============================================================ */
 
 /* ============================== DATA MODEL ============================== */
 
@@ -503,6 +656,7 @@ function saveSession(sess, patch){
   state.currentIndex = computeCurrentIndex();
   var ok = persistSessions();
   flagSaving(ok);
+  if(ok) touchLocalChange();
 }
 
 function flagSaving(ok){
@@ -517,7 +671,7 @@ function saveMaxes(newMaxes){
   var flag = document.getElementById("maxSaveFlag");
   var ok = persistMaxes();
   flag.textContent = ok ? "Saved" : "Couldn't save (browser storage is blocked)";
-  if(ok) setTimeout(function(){ flag.textContent=""; }, 1800);
+  if(ok){ setTimeout(function(){ flag.textContent=""; }, 1800); touchLocalChange(); }
   render();
 }
 
@@ -546,6 +700,7 @@ document.getElementById("restoreInput").addEventListener("change", function(evt)
       state.currentIndex = computeCurrentIndex();
       state.viewIndex = state.currentIndex;
       persistSessions(); persistMaxes();
+      touchLocalChange();
       render();
       flag.textContent = "Restored";
       setTimeout(function(){ flag.textContent=""; }, 1800);
@@ -556,6 +711,157 @@ document.getElementById("restoreInput").addEventListener("change", function(evt)
   reader.readAsText(file);
   evt.target.value = "";
 });
+
+/* ============================== ACCOUNT SYNC (optional, Firebase) ==============================
+   Nothing here runs unless FIREBASE_CONFIG above is filled in: the SDK is only ever
+   fetched (via a dynamic import, so a classic double-clicked file still works fine
+   otherwise) once you've pasted real config values in. Data lives at
+   users/{uid}/ironAndDraw/data in Firestore, readable and writable only by that uid. */
+
+var fbConfigured = !!(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
+var fb = null;            // { auth, db, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, onSnapshot }
+var fbUser = null;
+var fbUnsub = null;
+var applyingRemote = false;
+var cloudPushTimer = null;
+
+function userDocRef(uid){ return fb.doc(fb.db, "users", uid, "ironAndDraw", "data"); }
+
+function setAcctStatus(text, isError){
+  var el = document.getElementById("acctStatus");
+  if(el){ el.textContent = text; el.style.color = isError ? "var(--danger)" : ""; }
+}
+function setAcctFlag(text, isError){
+  var el = document.getElementById("acctFlag");
+  if(el){ el.textContent = text; el.style.color = isError ? "var(--danger)" : ""; }
+}
+
+function renderAccountUI(){
+  var notConf = document.getElementById("acctNotConfigured");
+  var signedOut = document.getElementById("acctSignedOut");
+  var signedIn = document.getElementById("acctSignedIn");
+  if(!fbConfigured){
+    notConf.style.display="block"; signedOut.style.display="none"; signedIn.style.display="none";
+    return;
+  }
+  notConf.style.display="none";
+  if(fbUser){
+    signedOut.style.display="none"; signedIn.style.display="block";
+    document.getElementById("acctEmail").textContent = fbUser.email || fbUser.displayName || "your account";
+  } else {
+    signedOut.style.display="block"; signedIn.style.display="none";
+  }
+}
+
+function buildSyncPayload(){
+  return { updatedAt: Date.now(), maxes: state.maxes, sessions: state.sessionDocs };
+}
+function applyRemotePayload(payload){
+  applyingRemote = true;
+  if(payload.maxes) state.maxes = Object.assign({}, STARTING_MAXES, payload.maxes);
+  if(payload.sessions) state.sessionDocs = payload.sessions || {};
+  state.currentIndex = computeCurrentIndex();
+  state.viewIndex = state.currentIndex;
+  persistSessions(); persistMaxes();
+  render();
+  applyingRemote = false;
+}
+function hasAnyLocalData(){ return Object.keys(state.sessionDocs||{}).length>0; }
+
+function pushToCloud(){
+  if(!fbUser) return;
+  var payload = buildSyncPayload();
+  setAcctStatus("Syncing…");
+  fb.setDoc(userDocRef(fbUser.uid), payload).then(function(){
+    setAcctStatus("Synced just now");
+  }).catch(function(err){
+    setAcctStatus("Couldn't sync: "+(err && err.message ? err.message : "unknown error"), true);
+  });
+}
+function touchLocalChange(){
+  if(!fbUser || applyingRemote) return;
+  if(cloudPushTimer) clearTimeout(cloudPushTimer);
+  cloudPushTimer = setTimeout(pushToCloud, 1500);
+}
+
+function startListening(uid){
+  if(fbUnsub){ fbUnsub(); fbUnsub=null; }
+  fbUnsub = fb.onSnapshot(userDocRef(uid), function(snap){
+    if(applyingRemote) return;
+    if(!snap.exists()) return;
+    applyRemotePayload(snap.data());
+    setAcctStatus("Synced just now");
+  }, function(err){
+    setAcctStatus("Sync connection lost: "+(err && err.message ? err.message : ""), true);
+  });
+}
+
+function reconcileOnSignIn(user){
+  fb.getDoc(userDocRef(user.uid)).then(function(snap){
+    if(snap.exists()){
+      var remote = snap.data();
+      if(hasAnyLocalData()){
+        var loadCloud = window.confirm("You already have data saved to this account. Load it here? This replaces what's on this device.\n\nChoose Cancel to keep this device's data and overwrite the cloud copy instead.");
+        if(loadCloud) applyRemotePayload(remote); else pushToCloud();
+      } else {
+        applyRemotePayload(remote);
+      }
+    } else {
+      pushToCloud();
+    }
+    startListening(user.uid);
+  }).catch(function(){
+    setAcctStatus("Couldn't reach your account data", true);
+    startListening(user.uid);
+  });
+}
+
+function loadFirebaseSdk(){
+  var base = "https://www.gstatic.com/firebasejs/"+FIREBASE_SDK_VERSION+"/";
+  return Promise.all([
+    import(/* webpackIgnore: true */ base+"firebase-app.js"),
+    import(/* webpackIgnore: true */ base+"firebase-auth.js"),
+    import(/* webpackIgnore: true */ base+"firebase-firestore.js")
+  ]).then(function(mods){
+    var appMod = mods[0], authMod = mods[1], fsMod = mods[2];
+    var app = appMod.initializeApp(FIREBASE_CONFIG);
+    fb = {
+      auth: authMod.getAuth(app),
+      db: fsMod.getFirestore(app),
+      GoogleAuthProvider: authMod.GoogleAuthProvider,
+      signInWithPopup: authMod.signInWithPopup,
+      signOut: authMod.signOut,
+      onAuthStateChanged: authMod.onAuthStateChanged,
+      doc: fsMod.doc, getDoc: fsMod.getDoc, setDoc: fsMod.setDoc, onSnapshot: fsMod.onSnapshot
+    };
+    return fb;
+  });
+}
+
+function initAccount(){
+  if(!fbConfigured){ renderAccountUI(); return; }
+  loadFirebaseSdk().then(function(){
+    fb.onAuthStateChanged(fb.auth, function(user){
+      fbUser = user;
+      renderAccountUI();
+      if(user){ reconcileOnSignIn(user); }
+      else if(fbUnsub){ fbUnsub(); fbUnsub=null; }
+    });
+    document.getElementById("signInBtn").addEventListener("click", function(){
+      setAcctFlag("Opening sign-in…");
+      fb.signInWithPopup(fb.auth, new fb.GoogleAuthProvider()).then(function(){
+        setAcctFlag("");
+      }).catch(function(err){
+        setAcctFlag(err && err.message ? err.message : "Sign-in failed", true);
+      });
+    });
+    document.getElementById("signOutBtn").addEventListener("click", function(){
+      fb.signOut(fb.auth);
+    });
+  }).catch(function(){
+    setAcctFlag("Couldn't load sign-in, check your internet connection", true);
+  });
+}
 
 /* ============================== RENDER: SESSION CARD ============================== */
 
@@ -710,17 +1016,30 @@ document.getElementById("completeBtn").addEventListener("click", function(){
     bodyweight: bw===""?null:parseFloat(bw),
     feeling: document.getElementById("feelInput").value
   });
-  renderSessionCard(); renderBrowser(); renderHeader(); renderCharts();
+  render();
 });
 document.getElementById("reopenBtn").addEventListener("click", function(){
   var sess = SESSIONS[state.viewIndex];
   saveSession(sess, { completed:false, completedAt:null });
-  renderSessionCard(); renderBrowser(); renderHeader(); renderCharts();
+  render();
 });
 document.getElementById("skipBtn").addEventListener("click", function(){
   var sess = SESSIONS[state.viewIndex];
   saveSession(sess, { completed:true, skipped:true, completedAt: todayIso() });
-  renderSessionCard(); renderBrowser(); renderHeader(); renderCharts();
+  render();
+});
+
+/* ============================== TABS ============================== */
+
+document.querySelectorAll(".tab-btn").forEach(function(btn){
+  btn.addEventListener("click", function(){
+    document.querySelectorAll(".tab-btn").forEach(function(b){ b.classList.remove("active"); });
+    document.querySelectorAll(".tab-panel").forEach(function(p){ p.classList.remove("active"); });
+    btn.classList.add("active");
+    var panel = document.getElementById("panel"+btn.dataset.tab.charAt(0).toUpperCase()+btn.dataset.tab.slice(1));
+    if(panel) panel.classList.add("active");
+    window.scrollTo({top:0, behavior:"smooth"});
+  });
 });
 
 /* ============================== HEADER ============================== */
@@ -770,7 +1089,7 @@ function updateEpley(){
 }
 epW.addEventListener("input", updateEpley); epR.addEventListener("input", updateEpley);
 
-/* ============================== CHARTS ============================== */
+/* ============================== CHARTS (shared drawing code) ============================== */
 
 function buildOneRmSeries(){
   return TREND_LIFTS.map(function(t){
@@ -800,23 +1119,11 @@ function buildBwSeries(){
   return [{ name:"Bodyweight", color:"var(--brand)", points: pts }];
 }
 
-function renderCharts(){
-  var oneRm = buildOneRmSeries();
-  var legend = document.getElementById("oneRmLegend");
-  legend.innerHTML = "";
-  oneRm.forEach(function(s){
-    var it = document.createElement("div"); it.className="leg-item";
-    it.innerHTML = '<span class="leg-swatch" style="background:'+s.color+'"></span>'+s.name;
-    legend.appendChild(it);
-  });
-  var box1 = document.getElementById("oneRmChartBox");
-  if(oneRm.length===0){ box1.innerHTML = '<p class="empty-note">Log a weight and reps on a main lift to see its trend here.</p>'; }
-  else { box1.innerHTML = ""; box1.appendChild(drawLineChart(oneRm, {yUnit:"kg", width:860, height:260})); }
-
-  var bw = buildBwSeries();
-  var box2 = document.getElementById("bwChartBox");
-  if(bw[0].points.length===0){ box2.innerHTML = '<p class="empty-note">Log your bodyweight on a session to see the trend here.</p>'; }
-  else { box2.innerHTML = ""; box2.appendChild(drawLineChart(bw, {yUnit:"kg", width:860, height:200, area:true})); }
+function fmtChartVal(y, unit){
+  var v = Math.round(y*10)/10;
+  if(unit==="kg") return v+"kg";
+  if(unit==="x") return v+"x";
+  return String(v);
 }
 
 function drawLineChart(series, opts){
@@ -825,7 +1132,7 @@ function drawLineChart(series, opts){
   var xMin = 0, xMax = SESSIONS.length-1;
   var yVals = allPts.map(function(p){return p.y;});
   var yMin = Math.min.apply(null, yVals), yMax = Math.max.apply(null, yVals);
-  if(yMin===yMax){ yMin -= 5; yMax += 5; }
+  if(yMin===yMax){ yMin -= (yMin*0.1||5); yMax += (yMax*0.1||5); }
   var pad_y = (yMax-yMin)*0.15 || 5;
   yMin -= pad_y; yMax += pad_y;
 
@@ -900,7 +1207,7 @@ function drawLineChart(series, opts){
     lbl.setAttribute("y", py(last.y)+4);
     lbl.setAttribute("font-size","11"); lbl.setAttribute("font-weight","600");
     lbl.setAttribute("fill",s.color); lbl.setAttribute("font-family","IBM Plex Sans, sans-serif");
-    lbl.textContent = (opts.yUnit==="kg" ? Math.round(last.y*10)/10+"kg" : Math.round(last.y*10)/10);
+    lbl.textContent = fmtChartVal(last.y, opts.yUnit);
     if(series.length>1) svg.appendChild(lbl);
   });
 
@@ -921,7 +1228,7 @@ function drawLineChart(series, opts){
     var lines = [];
     series.forEach(function(s){
       var match = s.points.find(function(p){ return p.x===xVal; });
-      if(match) lines.push(s.name+": "+(Math.round(match.y*10)/10)+" kg");
+      if(match) lines.push(s.name+": "+fmtChartVal(match.y, opts.yUnit));
     });
     if(lines.length===0){ hoverGroup.setAttribute("opacity","0"); tooltip.style.opacity=0; return; }
     crosshair.setAttribute("x1",px(xVal)); crosshair.setAttribute("x2",px(xVal));
@@ -933,6 +1240,267 @@ function drawLineChart(series, opts){
   svg.addEventListener("mouseleave", function(){ hoverGroup.setAttribute("opacity","0"); tooltip.style.opacity=0; });
 
   return wrapper;
+}
+
+/* ============================== STATS TAB ============================== */
+
+function pushIfChanged(arr, x, y){
+  if(arr.length && arr[arr.length-1].y===y) return;
+  arr.push({x:x,y:y});
+}
+
+function computeProgressStats(){
+  var total = SESSIONS.length;
+  var completed=0, skipped=0;
+  var completedDates = [];
+  SESSIONS.forEach(function(sess){
+    var doc = state.sessionDocs[sessionId(sess)];
+    if(doc && doc.completed){ completed++; if(doc.completedAt) completedDates.push(doc.completedAt); }
+    else if(doc && doc.skipped) skipped++;
+  });
+  var remaining = total-completed-skipped;
+  var pct = Math.round(((completed+skipped)/total)*100);
+  completedDates.sort();
+
+  var projectedFinish = null;
+  if(completedDates.length>=2){
+    var first = new Date(completedDates[0]+"T00:00:00");
+    var last = new Date(completedDates[completedDates.length-1]+"T00:00:00");
+    var daysElapsed = Math.max(1,(last-first)/86400000);
+    var perSession = daysElapsed/(completedDates.length-1);
+    var sessionsLeft = total-completed;
+    var daysLeft = perSession*sessionsLeft;
+    projectedFinish = new Date(last.getTime()+daysLeft*86400000);
+  }
+  return { total:total, completed:completed, skipped:skipped, remaining:remaining, pct:pct, projectedFinish:projectedFinish };
+}
+
+function computeStreak(){
+  var docs = SESSIONS.map(function(s){ return state.sessionDocs[sessionId(s)]; });
+  var lastDoneIdx = -1;
+  for(var j=0;j<docs.length;j++){ if(docs[j] && (docs[j].completed||docs[j].skipped)) lastDoneIdx=j; }
+  var count=0;
+  for(var k=lastDoneIdx;k>=0;k--){
+    if(docs[k] && docs[k].completed) count++;
+    else break;
+  }
+  return count;
+}
+
+function computeBlockBreakdown(){
+  return BLOCKS.map(function(block){
+    var completed=0, skipped=0, pending=0;
+    for(var wi=0; wi<6; wi++){
+      var week = block.weekStart+wi;
+      ["A","B","C"].forEach(function(day){
+        var sess = SESSIONS.find(function(s){ return s.week===week && s.day===day; });
+        var doc = state.sessionDocs[sessionId(sess)];
+        if(doc && doc.completed) completed++;
+        else if(doc && doc.skipped) skipped++;
+        else pending++;
+      });
+    }
+    return { name: stripAmp(block.name), completed:completed, skipped:skipped, pending:pending, total:18 };
+  });
+}
+
+function computeTonnageSeries(){
+  var pts = []; var cum=0;
+  SESSIONS.forEach(function(sess){
+    var doc = state.sessionDocs[sessionId(sess)];
+    if(!doc || !doc.exercises) return;
+    var tonnage=0;
+    Object.keys(doc.exercises).forEach(function(name){
+      var e = doc.exercises[name];
+      if(typeof e.weight==="number" && typeof e.reps==="number") tonnage += e.weight*e.reps;
+    });
+    if(tonnage>0){ cum += tonnage; pts.push({x:sess.index, y:Math.round(cum)}); }
+  });
+  return [{ name:"Cumulative tonnage", color:"var(--brand)", points: pts }];
+}
+
+function computeTotalLifetimeTonnage(){
+  var total=0;
+  Object.keys(state.sessionDocs).forEach(function(id){
+    var doc = state.sessionDocs[id];
+    if(!doc || !doc.exercises) return;
+    Object.keys(doc.exercises).forEach(function(name){
+      var e = doc.exercises[name];
+      if(typeof e.weight==="number" && typeof e.reps==="number") total += e.weight*e.reps;
+    });
+  });
+  return total;
+}
+
+function computePRs(){
+  return TREND_LIFTS.map(function(t){
+    var bestEst=null, bestEstDate=null, bestTop=null, bestTopDate=null;
+    SESSIONS.forEach(function(sess){
+      var hasEx = sess.exercises.some(function(e){ return e.name===t.exerciseName; });
+      if(!hasEx) return;
+      var doc = state.sessionDocs[sessionId(sess)];
+      if(!doc || !doc.exercises || !doc.exercises[t.exerciseName]) return;
+      var e = doc.exercises[t.exerciseName];
+      if(typeof e.weight==="number" && typeof e.reps==="number" && e.weight>0 && e.reps>0){
+        var est = epley(e.weight, e.reps);
+        if(bestEst===null || est>bestEst){ bestEst=est; bestEstDate=doc.completedAt; }
+        if(bestTop===null || e.weight>bestTop.weight){ bestTop = {weight:e.weight, reps:e.reps}; bestTopDate=doc.completedAt; }
+      }
+    });
+    return { key:t.key, name: LIFT_LABELS[t.key], bestEst:bestEst, bestEstDate:bestEstDate, bestTop:bestTop, bestTopDate:bestTopDate };
+  });
+}
+
+function computeRatioSeries(){
+  var perLift = {}; TREND_LIFTS.forEach(function(t){ perLift[t.key]=null; });
+  var lastBw = null;
+  var squatBw=[], dlSquat=[], total=[];
+  SESSIONS.forEach(function(sess){
+    var doc = state.sessionDocs[sessionId(sess)];
+    if(doc){
+      if(doc.exercises){
+        TREND_LIFTS.forEach(function(t){
+          var e = doc.exercises[t.exerciseName];
+          if(e && typeof e.weight==="number" && typeof e.reps==="number" && e.weight>0 && e.reps>0){
+            perLift[t.key] = epley(e.weight, e.reps);
+          }
+        });
+      }
+      if(typeof doc.bodyweight==="number") lastBw = doc.bodyweight;
+    }
+    if(perLift.backSquat!==null && lastBw!==null){
+      pushIfChanged(squatBw, sess.index, Math.round((perLift.backSquat/lastBw)*100)/100);
+    }
+    if(perLift.backSquat!==null && perLift.deadlift!==null){
+      pushIfChanged(dlSquat, sess.index, Math.round((perLift.deadlift/perLift.backSquat)*100)/100);
+    }
+    var vals = TREND_LIFTS.map(function(t){ return perLift[t.key]; });
+    if(vals.every(function(v){ return v!==null; })){
+      pushIfChanged(total, sess.index, Math.round(vals.reduce(function(a,b){return a+b;},0)*10)/10);
+    }
+  });
+  return { squatBw:squatBw, dlSquat:dlSquat, total: total };
+}
+
+function statTile(label, value){
+  var el = document.createElement("div"); el.className="max-item";
+  el.innerHTML = '<div class="lift-name">'+label+'</div><div class="cur num">'+value+'</div>';
+  return el;
+}
+
+function renderProgressStats(){
+  var p = computeProgressStats();
+  var grid = document.getElementById("progressGrid");
+  grid.innerHTML="";
+  grid.appendChild(statTile("Completed", p.completed+" / "+p.total));
+  grid.appendChild(statTile("Skipped", String(p.skipped)));
+  grid.appendChild(statTile("Remaining", String(p.remaining)));
+  grid.appendChild(statTile("Programme done", p.pct+"%"));
+  document.getElementById("progressBarFill").style.width = p.pct+"%";
+  var paceEl = document.getElementById("progressPace");
+  if(p.projectedFinish){
+    paceEl.textContent = "At your current pace, you're on track to finish around " +
+      p.projectedFinish.toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}) + ".";
+  } else {
+    paceEl.textContent = "Log a few more sessions to see a projected finish date.";
+  }
+}
+
+function renderStatsCharts(){
+  var oneRm = buildOneRmSeries();
+  var legend = document.getElementById("statsOneRmLegend");
+  legend.innerHTML="";
+  oneRm.forEach(function(s){
+    var it=document.createElement("div"); it.className="leg-item";
+    it.innerHTML='<span class="leg-swatch" style="background:'+s.color+'"></span>'+s.name;
+    legend.appendChild(it);
+  });
+  var box1=document.getElementById("statsOneRmChartBox");
+  if(oneRm.length===0) box1.innerHTML='<p class="empty-note">Log a weight and reps on a main lift to see its trend here.</p>';
+  else { box1.innerHTML=""; box1.appendChild(drawLineChart(oneRm,{yUnit:"kg",width:860,height:260})); }
+
+  var bw = buildBwSeries();
+  var box2=document.getElementById("statsBwChartBox");
+  if(bw[0].points.length===0) box2.innerHTML='<p class="empty-note">Log your bodyweight on a session to see the trend here.</p>';
+  else { box2.innerHTML=""; box2.appendChild(drawLineChart(bw,{yUnit:"kg",width:860,height:200,area:true})); }
+
+  var ratios = computeRatioSeries();
+
+  var boxTotal = document.getElementById("totalChartBox");
+  if(ratios.total.length===0) boxTotal.innerHTML='<p class="empty-note">Log all four main lifts at least once each to see your combined total.</p>';
+  else { boxTotal.innerHTML=""; boxTotal.appendChild(drawLineChart([{name:"Total",color:"var(--brand)",points:ratios.total}],{yUnit:"kg",width:860,height:220})); }
+
+  var boxDlSq = document.getElementById("ratioDlSquatBox");
+  if(ratios.dlSquat.length===0) boxDlSq.innerHTML='<p class="empty-note">Log Back Squat and Deadlift at least once each.</p>';
+  else { boxDlSq.innerHTML=""; boxDlSq.appendChild(drawLineChart([{name:"Deadlift : Squat",color:"var(--series-deadlift)",points:ratios.dlSquat}],{yUnit:"x",width:860,height:180})); }
+
+  var boxSqBw = document.getElementById("ratioSquatBwBox");
+  if(ratios.squatBw.length===0) boxSqBw.innerHTML='<p class="empty-note">Log a Back Squat and your bodyweight at least once each.</p>';
+  else { boxSqBw.innerHTML=""; boxSqBw.appendChild(drawLineChart([{name:"Squat : Bodyweight",color:"var(--series-squat)",points:ratios.squatBw}],{yUnit:"x",width:860,height:180})); }
+
+  var tonnage = computeTonnageSeries();
+  var tonnageBox = document.getElementById("tonnageChartBox");
+  if(tonnage[0].points.length===0) tonnageBox.innerHTML='<p class="empty-note">Log a weight and reps on any lift to see cumulative tonnage here.</p>';
+  else { tonnageBox.innerHTML=""; tonnageBox.appendChild(drawLineChart(tonnage,{yUnit:"kg",width:860,height:220,area:true})); }
+
+  var tGrid = document.getElementById("tonnageGrid");
+  tGrid.innerHTML="";
+  tGrid.appendChild(statTile("Lifetime tonnage", fmtKg(computeTotalLifetimeTonnage())));
+}
+
+function renderPRs(){
+  var prs = computePRs();
+  var host = document.getElementById("prList");
+  host.innerHTML="";
+  prs.forEach(function(p){
+    var row=document.createElement("div"); row.className="ex-row";
+    var left=document.createElement("div");
+    left.innerHTML = '<div class="ex-name">'+p.name+'</div>';
+    var right=document.createElement("div"); right.className="ex-inputs"; right.style.textAlign="right"; right.style.flexDirection="column"; right.style.alignItems="flex-end";
+    if(p.bestEst===null){
+      right.innerHTML = '<span class="muted">No sets logged yet</span>';
+    } else {
+      right.innerHTML =
+        '<div><span class="target-badge">Est. 1RM '+fmtKg(p.bestEst)+'</span> <span class="muted">'+(p.bestEstDate?fmtDate(p.bestEstDate):"")+'</span></div>'+
+        '<div style="margin-top:6px;"><span class="target-badge">Top set '+fmtKg(p.bestTop.weight)+' &times; '+p.bestTop.reps+'</span> <span class="muted">'+(p.bestTopDate?fmtDate(p.bestTopDate):"")+'</span></div>';
+    }
+    row.appendChild(left); row.appendChild(right);
+    host.appendChild(row);
+  });
+}
+
+function renderConsistency(){
+  var streak = computeStreak();
+  var grid = document.getElementById("consistencyGrid");
+  grid.innerHTML="";
+  var p = computeProgressStats();
+  var weeksElapsed = Math.min(24, Math.ceil((p.completed+p.skipped)/3));
+  grid.appendChild(statTile("Current streak", streak+" session"+(streak===1?"":"s")));
+  grid.appendChild(statTile("Weeks worked through", weeksElapsed+" / 24"));
+
+  var host = document.getElementById("blockStats");
+  host.innerHTML="";
+  computeBlockBreakdown().forEach(function(b){
+    var row=document.createElement("div"); row.className="block-stat-row";
+    var head=document.createElement("div"); head.className="block-stat-head";
+    head.innerHTML = '<span>'+b.name+'</span><span>'+b.completed+' / '+b.total+' complete'+(b.skipped?' &middot; '+b.skipped+' skipped':'')+'</span>';
+    var bar=document.createElement("div"); bar.className="stack-bar";
+    function seg(cls,count){
+      if(count<=0) return;
+      var s=document.createElement("div"); s.className="stack-seg "+cls; s.style.width=(count/b.total*100)+"%";
+      bar.appendChild(s);
+    }
+    seg("completed", b.completed); seg("skipped", b.skipped); seg("pending", b.pending);
+    row.appendChild(head); row.appendChild(bar);
+    host.appendChild(row);
+  });
+}
+
+function renderStats(){
+  renderProgressStats();
+  renderStatsCharts();
+  renderPRs();
+  renderConsistency();
 }
 
 /* ============================== BROWSER ============================== */
@@ -961,7 +1529,10 @@ function renderBrowser(){
         var status = doc && doc.skipped ? "skipped" : (doc && doc.completed ? "done" : "pending");
         var btn = document.createElement("button"); btn.className="day-btn"+(sessIndex===state.currentIndex?" current":"");
         btn.innerHTML = '<span>Day '+day+'</span><span class="dot '+status+'"></span>';
-        btn.addEventListener("click", function(ix){ return function(){ state.viewIndex = ix; renderSessionCard(); window.scrollTo({top:0, behavior:"smooth"}); }; }(sessIndex));
+        btn.addEventListener("click", function(ix){ return function(){
+          state.viewIndex = ix; renderSessionCard();
+          document.querySelector('.tab-btn[data-tab="today"]').click();
+        }; }(sessIndex));
         dayBtns.appendChild(btn);
       });
       body.appendChild(wRow);
@@ -981,13 +1552,14 @@ function render(){
   renderHeader();
   renderSessionCard();
   renderMaxes();
-  renderCharts();
+  renderStats();
   renderBrowser();
 }
 
 loadLocal();
 state.viewIndex = state.currentIndex;
 render();
+initAccount();
 
 })();
 </script>
