@@ -118,6 +118,7 @@
   .pill.skipped{background:var(--warn-soft); color:var(--warn);}
   .pill.pending{background:var(--surface-2); color:var(--text-muted);}
   .pill.deload{background:var(--brand-soft); color:var(--brand);}
+  .test-banner{margin:12px 0 0; padding:12px 14px; border-radius:10px; background:var(--warn-soft); color:var(--warn); font-size:14px; line-height:1.5;}
 
   /* ---- exercise table ---- */
   .ex-list{display:flex; flex-direction:column; gap:1px; border-radius:10px; overflow:hidden; border:1px solid var(--border);}
@@ -277,6 +278,7 @@
         </div>
       </div>
       <p class="muted" id="sessSub">5-minute warm-up first: arm circles, band pull-aparts, slow external rotations with a light plate.</p>
+      <div class="test-banner" id="testBanner" style="display:none;"></div>
       <div id="exList" class="ex-list"></div>
 
       <div class="sess-footer">
@@ -305,7 +307,7 @@
           <h2>Your current maxes</h2>
         </div>
       </div>
-      <p class="muted">Update these whenever you retest (every deload week is the natural point). Every session that isn't logged yet recalculates its target weight from these numbers immediately.</p>
+      <p class="muted">Weeks 23, 47 and 52 are built-in 1-rep max tests, flagged on the day itself, so update these numbers straight after each one. That's what actually drives the year's strength gains: a moderate lifter training consistently at this intensity and retesting properly can expect to add somewhere in the region of 15-25% to these lifts by the final test, well above where they started. Every session that isn't logged yet recalculates its target weight from these numbers immediately.</p>
       <div class="max-grid" id="maxGrid"></div>
       <div class="epley">
         <p class="eyebrow">Estimate a new max from a set</p>
@@ -430,6 +432,21 @@
 
   <div class="tab-panel" id="panelAccount">
 
+    <section class="card" id="acctMaxesCard">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">Starting point</p>
+          <h2>Set your maxes</h2>
+        </div>
+      </div>
+      <p class="muted">These drive the target weight for every session that isn't logged yet, whether you're setting a baseline for the first time or updating after one of the programme's three built-in 1-rep max tests (weeks 23, 47 and 52).</p>
+      <div class="max-grid" id="acctMaxGrid"></div>
+      <div class="sess-actions">
+        <button class="btn btn-primary" id="acctSaveMaxesBtn">Save maxes</button>
+        <span class="save-flag" id="acctMaxSaveFlag"></span>
+      </div>
+    </section>
+
     <section class="card" id="accountCard">
       <div class="card-head">
         <div>
@@ -508,39 +525,48 @@ var BLOCKS = [
   { n:1, name:"Foundation", weekStart:1, weeks:6,
     pcts:[70,72.5,75,77.5,80,60],
     scheme:["3 x 8","3 x 8","3 x 8","3 x 8","3 x 8","3 x 8"],
+    deloadWeekIdx:5,
     accessoryReps:"3 x 12-15", plank:"30-45 sec", carry:"15-20m" },
   { n:2, name:"Build", weekStart:7, weeks:6,
     pcts:[75,77.5,80,82.5,85,65],
     scheme:["4 x 6","4 x 6","4 x 6","4 x 6","4 x 6","4 x 6"],
+    deloadWeekIdx:5,
     accessoryReps:"3 x 10-12", plank:"45-60 sec", carry:"20-25m" },
   { n:3, name:"Strength", weekStart:13, weeks:6,
     pcts:[80,82.5,85,87.5,90,70],
     scheme:["5 x 5","5 x 5","5 x 5","5 x 5","4 x 4","4 x 4"],
+    deloadWeekIdx:5,
     accessoryReps:"3 x 8-10", plank:"60+ sec", carry:"25-30m" },
   { n:4, name:"Peak &amp; Archery Integration", weekStart:19, weeks:6,
-    pcts:[85,87.5,90,92.5,95,60],
-    scheme:["3 x 3","3 x 3","3 x 3","3 x 3","2 x 2","2 x 2"],
+    pcts:[85,87.5,90,92.5,100,60],
+    scheme:["3 x 3","3 x 3","2 x 2","2 x 2","1 x 1","3 x 5"],
+    testWeekIdx:4, deloadWeekIdx:5,
     accessoryReps:"3 x 6-8 (heavier) or extended holds", plank:"60-90 sec", carry:"20m (heavier load)" },
   { n:5, name:"Foundation II", weekStart:25, weeks:6,
-    pcts:[70,72.5,75,77.5,80,60],
+    pcts:[72.5,75,77.5,80,82.5,62.5],
     scheme:["3 x 8","3 x 8","3 x 8","3 x 8","3 x 8","3 x 8"],
+    deloadWeekIdx:5,
     accessoryReps:"3 x 12-15", plank:"30-45 sec", carry:"15-20m" },
   { n:6, name:"Build II", weekStart:31, weeks:6,
-    pcts:[75,77.5,80,82.5,85,65],
+    pcts:[77.5,80,82.5,85,87.5,67.5],
     scheme:["4 x 6","4 x 6","4 x 6","4 x 6","4 x 6","4 x 6"],
+    deloadWeekIdx:5,
     accessoryReps:"3 x 10-12", plank:"45-60 sec", carry:"20-25m" },
   { n:7, name:"Strength II", weekStart:37, weeks:6,
-    pcts:[80,82.5,85,87.5,90,70],
+    pcts:[82.5,85,87.5,90,92.5,72.5],
     scheme:["5 x 5","5 x 5","5 x 5","5 x 5","4 x 4","4 x 4"],
+    deloadWeekIdx:5,
     accessoryReps:"3 x 8-10", plank:"60+ sec", carry:"25-30m" },
   { n:8, name:"Peak &amp; Archery Integration II", weekStart:43, weeks:6,
-    pcts:[85,87.5,90,92.5,95,60],
-    scheme:["3 x 3","3 x 3","3 x 3","3 x 3","2 x 2","2 x 2"],
+    pcts:[90,92.5,95,97.5,105,62.5],
+    scheme:["3 x 3","3 x 3","2 x 2","2 x 2","1 x 1","3 x 5"],
+    testWeekIdx:4, deloadWeekIdx:5,
     accessoryReps:"3 x 6-8 (heavier) or extended holds", plank:"60-90 sec", carry:"20m (heavier load)" },
   { n:9, name:"Taper &amp; Retest", weekStart:49, weeks:4,
-    pcts:[75,70,65,60],
-    scheme:["3 x 5","3 x 5","3 x 4","3 x 3"],
-    accessoryReps:"3 x 10-12", plank:"45-60 sec", carry:"20-25m" }
+    pcts:[70,65,55,102.5],
+    scheme:["3 x 5","3 x 3","2 x 2","1 x 1"],
+    testWeekIdx:3,
+    accessoryReps:"3 x 10-12 (light)", plank:"45-60 sec", carry:"20-25m" }
 ];
 var TOTAL_WEEKS = BLOCKS[BLOCKS.length-1].weekStart + BLOCKS[BLOCKS.length-1].weeks - 1;
 
@@ -585,11 +611,12 @@ var SESSIONS = [];
   BLOCKS.forEach(function(block){
     for(var wi=0; wi<block.weeks; wi++){
       var week = block.weekStart + wi;
-      var deload = (wi === block.weeks-1);
+      var deload = (block.deloadWeekIdx === wi);
+      var testWeek = (block.testWeekIdx === wi);
       ["A","B","C"].forEach(function(day){
         SESSIONS.push({
           index: idx++, week: week, day: day, block: block, weekIdx: wi,
-          pct: block.pcts[wi], scheme: block.scheme[wi], deload: deload,
+          pct: block.pcts[wi], scheme: block.scheme[wi], deload: deload, testWeek: testWeek,
           exercises: DAY_EXERCISES[day]
         });
       });
@@ -687,12 +714,15 @@ function flagSaving(ok){
   if(ok){ setTimeout(function(){ if(el.textContent==="Saved") el.textContent=""; }, 1800); }
 }
 
-function saveMaxes(newMaxes){
+function saveMaxes(newMaxes, flagId){
   state.maxes = newMaxes;
-  var flag = document.getElementById("maxSaveFlag");
+  var flag = document.getElementById(flagId || "maxSaveFlag");
   var ok = persistMaxes();
-  flag.textContent = ok ? "Saved" : "Couldn't save (browser storage is blocked)";
-  if(ok){ setTimeout(function(){ flag.textContent=""; }, 1800); touchLocalChange(); }
+  if(flag){
+    flag.textContent = ok ? "Saved" : "Couldn't save (browser storage is blocked)";
+    if(ok) setTimeout(function(){ flag.textContent=""; }, 1800);
+  }
+  if(ok) touchLocalChange();
   render();
 }
 
@@ -898,11 +928,19 @@ function renderSessionCard(){
   var doc = state.sessionDocs[sessionId(sess)] || {};
   var isCurrent = state.viewIndex === state.currentIndex;
 
-  document.getElementById("sessBlockLabel").textContent = "Block "+sess.block.n+": "+stripAmp(sess.block.name) + (sess.deload ? " · Deload week" : "");
+  document.getElementById("sessBlockLabel").textContent = "Block "+sess.block.n+": "+stripAmp(sess.block.name) + (sess.testWeek ? " · 1RM test week" : sess.deload ? " · Deload week" : "");
   document.getElementById("sessTitle").innerHTML = "Week "+sess.week+" of "+TOTAL_WEEKS+" &middot; "+DAY_TITLES[sess.day];
   document.getElementById("prevBtn").disabled = state.viewIndex===0;
   document.getElementById("nextBtn").disabled = state.viewIndex===SESSIONS.length-1;
   document.getElementById("todayBtn").style.visibility = isCurrent ? "hidden" : "visible";
+
+  var testBanner = document.getElementById("testBanner");
+  if(sess.testWeek){
+    testBanner.style.display = "block";
+    testBanner.textContent = "This is a genuine 1-rep max test, not an estimate. Warm up with several lighter singles before you touch the top weight shown below, and don't be afraid of it landing above or below the number on the page: log whatever you actually lift. Once it's in, go to the Account tab and enter it as your new max so the rest of the programme is built around your real strength, not a guess.";
+  } else {
+    testBanner.style.display = "none";
+  }
 
   var list = document.getElementById("exList");
   list.innerHTML = "";
@@ -1077,28 +1115,38 @@ function renderHeader(){
 /* ============================== MAXES PANEL ============================== */
 
 function renderMaxes(){
-  var grid = document.getElementById("maxGrid");
-  grid.innerHTML = "";
-  Object.keys(LIFT_LABELS).forEach(function(key){
-    var item = document.createElement("div"); item.className="max-item";
-    item.innerHTML =
-      '<div class="lift-name">'+LIFT_LABELS[key]+'</div>'+
-      '<div class="cur num">'+fmtKg(state.maxes[key])+'</div>';
-    var input = document.createElement("input");
-    input.type="number"; input.step="0.5"; input.placeholder="New max (kg)"; input.dataset.lift = key;
-    item.appendChild(input);
-    grid.appendChild(item);
+  ["maxGrid","acctMaxGrid"].forEach(function(gridId){
+    var grid = document.getElementById(gridId);
+    if(!grid) return;
+    grid.innerHTML = "";
+    Object.keys(LIFT_LABELS).forEach(function(key){
+      var item = document.createElement("div"); item.className="max-item";
+      item.innerHTML =
+        '<div class="lift-name">'+LIFT_LABELS[key]+'</div>'+
+        '<div class="cur num">'+fmtKg(state.maxes[key])+'</div>';
+      var input = document.createElement("input");
+      input.type="number"; input.step="0.5"; input.placeholder="New max (kg)"; input.dataset.lift = key;
+      item.appendChild(input);
+      grid.appendChild(item);
+    });
   });
 }
 
-document.getElementById("saveMaxesBtn").addEventListener("click", function(){
-  var inputs = document.querySelectorAll("#maxGrid input");
+function saveMaxesFromGrid(gridId, flagId){
+  var inputs = document.querySelectorAll("#"+gridId+" input");
   var next = Object.assign({}, state.maxes);
   var changed = false;
   inputs.forEach(function(inp){
     if(inp.value !== ""){ next[inp.dataset.lift] = parseFloat(inp.value); changed = true; inp.value=""; }
   });
-  if(changed) saveMaxes(next);
+  if(changed) saveMaxes(next, flagId);
+}
+
+document.getElementById("saveMaxesBtn").addEventListener("click", function(){
+  saveMaxesFromGrid("maxGrid", "maxSaveFlag");
+});
+document.getElementById("acctSaveMaxesBtn").addEventListener("click", function(){
+  saveMaxesFromGrid("acctMaxGrid", "acctMaxSaveFlag");
 });
 
 var epW = document.getElementById("epW"), epR = document.getElementById("epR"), epResult = document.getElementById("epResult");
