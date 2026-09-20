@@ -125,7 +125,6 @@
   .pill.done{background:var(--good-soft); color:var(--good);}
   .pill.skipped{background:var(--warn-soft); color:var(--warn);}
   .pill.pending{background:var(--surface-2); color:var(--text-muted);}
-  .pill.deload{background:var(--brand-soft); color:var(--brand);}
   .test-banner{margin:12px 0 0; padding:12px 14px; border-radius:10px; background:var(--warn-soft); color:var(--warn); font-size:14px; line-height:1.5;}
 
   /* ---- exercise table ---- */
@@ -144,6 +143,10 @@
   .field input[type=number]{
     width:74px; padding:7px 8px; border-radius:8px; border:1px solid var(--border);
     background:var(--bg); color:var(--text); font-size:14px; font-feature-settings:"tnum" 1;
+  }
+  .field select{
+    padding:7px 8px; border-radius:8px; border:1px solid var(--border);
+    background:var(--bg); color:var(--text); font-size:14px; font-family:inherit;
   }
   .field input[type=number]:focus, .field input[type=text]:focus{outline:2px solid var(--brand); outline-offset:1px;}
   .target-badge{
@@ -234,6 +237,14 @@
   .dot.done{background:var(--good);}
   .dot.skipped{background:var(--warn);}
 
+  /* ---- heatmap ---- */
+  .heatmap{display:grid; grid-template-columns:repeat(auto-fill, minmax(11px,1fr)); gap:3px; margin-top:6px;}
+  .heatmap .cell{aspect-ratio:1; border-radius:2px; background:var(--surface-2); cursor:pointer; border:none; padding:0;}
+  .heatmap .cell.done{background:var(--good);}
+  .heatmap .cell.skipped{background:var(--warn);}
+  .heatmap .cell.current{outline:2px solid var(--brand); outline-offset:1px;}
+  .heatmap-legend{display:flex; gap:14px; flex-wrap:wrap; margin-top:10px;}
+
   @media (max-width:560px){
     .ex-row{grid-template-columns:1fr;}
     .ex-inputs{justify-content:flex-start;}
@@ -258,6 +269,7 @@
       <circle cx="24" cy="24" r="5" fill="currentColor"/>
     </svg>
     <h1>Iron &amp; Draw</h1>
+    <button class="today-btn" id="themeBtn" type="button" title="Cycle light/dark theme">Theme: Auto</button>
     <div class="stat-chip" id="headerChip"><span class="dot" id="headerDot"></span> <span id="headerChipText">Loading&hellip;</span></div>
   </header>
 
@@ -268,6 +280,16 @@
   </nav>
 
   <div class="tab-panel active" id="panelToday">
+
+    <section class="card" id="completeBanner" style="display:none;">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">Full year complete</p>
+          <h2>You've finished the programme</h2>
+        </div>
+      </div>
+      <p class="muted" id="completeBannerText"></p>
+    </section>
 
     <section class="card" id="sessionCard">
       <div class="card-head">
@@ -320,9 +342,20 @@
       <div class="epley">
         <p class="eyebrow">Estimate a new max from a set</p>
         <div class="epley-row">
+          <div class="field"><label for="epLift">Lift</label>
+            <select id="epLift">
+              <option value="backSquat">Back Squat</option>
+              <option value="deadlift">Deadlift</option>
+              <option value="benchPress">Bench Press</option>
+              <option value="barbellRow">Barbell Row</option>
+            </select>
+          </div>
           <div class="field"><label for="epW">Weight (kg)</label><input type="number" step="0.5" id="epW"></div>
           <div class="field"><label for="epR">Reps</label><input type="number" step="1" id="epR"></div>
           <div class="epley-result" id="epResult">Enter a weight and reps from a hard set (1-2 reps in reserve).</div>
+        </div>
+        <div class="sess-actions" style="margin-top:10px;">
+          <button class="btn btn-ghost" id="epUseBtn" disabled>Use this value</button>
         </div>
       </div>
       <div class="sess-actions">
@@ -360,6 +393,16 @@
     <section class="card">
       <div class="card-head">
         <div>
+          <p class="eyebrow">Goals</p>
+          <h2>Progress to your targets</h2>
+        </div>
+      </div>
+      <div id="goalProgress"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
           <p class="eyebrow">Progress</p>
           <h2>Estimated one-rep max</h2>
         </div>
@@ -376,8 +419,20 @@
           <h2>Combined strength total</h2>
         </div>
       </div>
-      <p class="muted">Back Squat + Deadlift + Bench Press + Barbell Row, each taken as its latest logged estimated max. Appears once you've logged all four at least once.</p>
+      <p class="muted">Back Squat + Deadlift + Bench Press + Barbell Row, each taken as its latest logged estimated max, against what the programme's own percentages would give you at today's maxes. Appears once you've logged all four at least once.</p>
+      <div class="chart-legend" id="totalChartLegend"></div>
       <div class="chart-box" id="totalChartBox"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">Year over year</p>
+          <h2>Same block, six months apart</h2>
+        </div>
+      </div>
+      <p class="muted">Foundation, Build, Strength and Peak each repeat once in the second half of the year at the same relative intensity. This is your best logged weight in each, side by side.</p>
+      <div id="blockComparison"></div>
     </section>
 
     <section class="card">
@@ -391,6 +446,21 @@
       <div class="chart-box" id="ratioDlSquatBox"></div>
       <p class="muted" style="margin-top:16px;">Back Squat relative to bodyweight.</p>
       <div class="chart-box" id="ratioSquatBwBox"></div>
+      <p class="muted" style="margin-top:16px;">Barbell Row relative to Bench Press, a rough push-pull balance check.</p>
+      <div class="chart-box" id="ratioRowBenchBox"></div>
+      <p class="muted" style="margin-top:16px;">All four lifts combined, relative to bodyweight. Stays meaningful even if your bodyweight moves around over the year.</p>
+      <div class="chart-box" id="relIndexBox"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">Context</p>
+          <h2>Where you stand</h2>
+        </div>
+      </div>
+      <p class="muted">Rough, commonly-cited bodyweight-ratio bands, not a precise or personalised standard: they don't account for age, sex, injury history or years of training, so treat this as a general compass, not a verdict. Barbell Row has no widely agreed standard, so its bands are a loose estimate based on Bench Press.</p>
+      <div id="strengthStandards"></div>
     </section>
 
     <section class="card">
@@ -400,7 +470,7 @@
           <h2>Total weight moved</h2>
         </div>
       </div>
-      <p class="muted">Weight &times; reps, added up across every logged set.</p>
+      <p class="muted">Weight &times; reps, totalled per week rather than per session so the shape of each training block (building up, then easing off for a deload) is easy to see.</p>
       <div class="max-grid" id="tonnageGrid"></div>
       <div class="chart-box" id="tonnageChartBox" style="margin-top:14px;"></div>
     </section>
@@ -412,6 +482,7 @@
           <h2>Bodyweight</h2>
         </div>
       </div>
+      <p class="muted">Averaged per week to smooth out normal day-to-day fluctuation.</p>
       <div class="chart-box" id="statsBwChartBox"></div>
     </section>
 
@@ -422,6 +493,7 @@
           <h2>Personal records</h2>
         </div>
       </div>
+      <div class="max-grid" id="bonusRecordsGrid" style="margin-bottom:14px;"></div>
       <div class="ex-list" id="prList"></div>
     </section>
 
@@ -433,6 +505,14 @@
         </div>
       </div>
       <div class="max-grid" id="consistencyGrid"></div>
+      <p class="eyebrow" style="margin-top:18px;">Full year at a glance</p>
+      <div class="heatmap" id="yearHeatmap"></div>
+      <div class="heatmap-legend">
+        <div class="leg-item"><span class="leg-swatch" style="background:var(--good);"></span>Completed</div>
+        <div class="leg-item"><span class="leg-swatch" style="background:var(--warn);"></span>Skipped</div>
+        <div class="leg-item"><span class="leg-swatch" style="background:var(--surface-2); border:1px solid var(--border);"></span>Not done yet</div>
+        <div class="leg-item"><span class="leg-swatch" style="background:var(--surface-2); outline:2px solid var(--brand);"></span>Current</div>
+      </div>
       <div id="blockStats" style="margin-top:16px;"></div>
     </section>
 
@@ -452,6 +532,21 @@
       <div class="sess-actions">
         <button class="btn btn-primary" id="acctSaveMaxesBtn">Save maxes</button>
         <span class="save-flag" id="acctMaxSaveFlag"></span>
+      </div>
+    </section>
+
+    <section class="card" id="goalsCard">
+      <div class="card-head">
+        <div>
+          <p class="eyebrow">Optional</p>
+          <h2>Set a target</h2>
+        </div>
+      </div>
+      <p class="muted">Separate from the programme's own pace: put in a number you actually want to hit, and the Stats tab shows how close you are to it. Leave any of these blank to skip tracking that lift.</p>
+      <div class="max-grid" id="goalsGrid"></div>
+      <div class="sess-actions">
+        <button class="btn btn-primary" id="saveGoalsBtn">Save goals</button>
+        <span class="save-flag" id="goalsSaveFlag"></span>
       </div>
     </section>
 
@@ -524,6 +619,27 @@ var FIREBASE_CONFIG = {
 };
 var FIREBASE_SDK_VERSION = "12.19.0";
 /* ============================================================ */
+
+/* ============================== THEME ============================== */
+
+function applyTheme(mode){
+  if(mode==="light"){ document.documentElement.setAttribute("data-theme","light"); }
+  else if(mode==="dark"){ document.documentElement.setAttribute("data-theme","dark"); }
+  else { document.documentElement.removeAttribute("data-theme"); }
+  var btn = document.getElementById("themeBtn");
+  if(btn) btn.textContent = "Theme: " + (mode==="light" ? "Light" : mode==="dark" ? "Dark" : "Auto");
+  try{ localStorage.setItem("ironDraw.theme", mode); }catch(e){}
+}
+function initTheme(){
+  var saved = "auto";
+  try{ saved = localStorage.getItem("ironDraw.theme") || "auto"; }catch(e){}
+  applyTheme(saved);
+  document.getElementById("themeBtn").addEventListener("click", function(){
+    var cur = "auto";
+    try{ cur = localStorage.getItem("ironDraw.theme") || "auto"; }catch(e){}
+    applyTheme(cur==="auto" ? "light" : cur==="light" ? "dark" : "auto");
+  });
+}
 
 /* ============================== DATA MODEL ============================== */
 
@@ -632,10 +748,21 @@ var SESSIONS = [];
   });
 })();
 
+/* On a genuine 1RM test week, the block's near-100%+ single applies to the actual
+   primary lift (mult 1) but doesn't mean anything for a movement standing in as a
+   proxy for it (Front Squat, Single-Arm Plate Bench): there's no established "1RM"
+   for those, so they get a solid but sane target instead of a fabricated max attempt. */
+var SECONDARY_TEST_PCT = 88;
+var SECONDARY_TEST_SCHEME = "3 x 3";
+
 function computeTarget(ex, sess, maxes){
   if(ex.lift){
-    var w = roundPlate(maxes[ex.lift] * ex.mult * sess.pct / 100);
-    return { kind:"weight", weight:w, suffix:ex.suffix||"", reps:parseTopReps(sess.scheme), scheme:sess.scheme };
+    var pct = sess.pct, scheme = sess.scheme;
+    if(sess.testWeek && ex.mult !== 1){
+      pct = SECONDARY_TEST_PCT; scheme = SECONDARY_TEST_SCHEME;
+    }
+    var w = roundPlate(maxes[ex.lift] * ex.mult * pct / 100);
+    return { kind:"weight", weight:w, suffix:ex.suffix||"", reps:parseTopReps(scheme), scheme:scheme };
   }
   var field = ex.target;
   var val = field ? sess.block[field] : sess.scheme;
@@ -662,6 +789,8 @@ function todayIso(){
 
 var state = {
   maxes: Object.assign({}, STARTING_MAXES),
+  maxesUpdatedAt: 0,
+  goals: {},             // lift -> target max (kg), optional
   sessionDocs: {},      // id -> data
   currentIndex: 0,      // "today" pointer, computed
   viewIndex: 0          // whichever session is being viewed
@@ -669,6 +798,8 @@ var state = {
 
 var LS_SESSIONS = "ironDraw.sessions";
 var LS_MAXES = "ironDraw.maxes";
+var LS_GOALS = "ironDraw.goals";
+var LS_THEME = "ironDraw.theme";
 
 function sessionId(sess){ return "w"+sess.week+"-"+sess.day; }
 
@@ -689,7 +820,21 @@ function loadLocal(){
   } catch(e){ /* private browsing, blocked storage, etc: start empty */ }
   try{
     var m = localStorage.getItem(LS_MAXES);
-    if(m) state.maxes = Object.assign({}, STARTING_MAXES, JSON.parse(m));
+    if(m){
+      var parsed = JSON.parse(m);
+      if(parsed && parsed.values){
+        state.maxes = Object.assign({}, STARTING_MAXES, parsed.values);
+        state.maxesUpdatedAt = parsed.updatedAt || 0;
+      } else {
+        // legacy format: maxes stored directly, no timestamp
+        state.maxes = Object.assign({}, STARTING_MAXES, parsed);
+        state.maxesUpdatedAt = 0;
+      }
+    }
+  } catch(e){}
+  try{
+    var g = localStorage.getItem(LS_GOALS);
+    if(g) state.goals = JSON.parse(g) || {};
   } catch(e){}
   state.currentIndex = computeCurrentIndex();
 }
@@ -699,8 +844,26 @@ function persistSessions(){
   catch(e){ return false; }
 }
 function persistMaxes(){
-  try{ localStorage.setItem(LS_MAXES, JSON.stringify(state.maxes)); return true; }
+  try{ localStorage.setItem(LS_MAXES, JSON.stringify({ values: state.maxes, updatedAt: state.maxesUpdatedAt })); return true; }
   catch(e){ return false; }
+}
+function persistGoals(){
+  try{ localStorage.setItem(LS_GOALS, JSON.stringify(state.goals)); return true; }
+  catch(e){ return false; }
+}
+
+/* Merge two sessionDocs maps, keeping whichever record of each id was saved more
+   recently. A record with no savedAt (older data) is treated as the oldest possible,
+   so anything with a timestamp beats it. This means a remote update never blindly
+   wipes out a local edit made around the same time, or vice versa. */
+function mergeSessionDocs(local, remote){
+  var out = Object.assign({}, local||{});
+  Object.keys(remote||{}).forEach(function(id){
+    var r = remote[id];
+    var l = local && local[id];
+    if(!l || (r && (r.savedAt||0) >= (l.savedAt||0))) out[id] = r;
+  });
+  return out;
 }
 
 function saveSession(sess, patch){
@@ -708,6 +871,7 @@ function saveSession(sess, patch){
   var existing = state.sessionDocs[id] || { exercises:{} };
   var merged = Object.assign({}, existing, patch);
   merged.index = sess.index; merged.week = sess.week; merged.day = sess.day;
+  merged.savedAt = Date.now();
   state.sessionDocs[id] = merged;
   state.currentIndex = computeCurrentIndex();
   var ok = persistSessions();
@@ -724,6 +888,7 @@ function flagSaving(ok){
 
 function saveMaxes(newMaxes, flagId){
   state.maxes = newMaxes;
+  state.maxesUpdatedAt = Date.now();
   var flag = document.getElementById(flagId || "maxSaveFlag");
   var ok = persistMaxes();
   if(flag){
@@ -737,7 +902,7 @@ function saveMaxes(newMaxes, flagId){
 /* ============================== BACKUP / RESTORE ============================== */
 
 document.getElementById("downloadBackupBtn").addEventListener("click", function(){
-  var payload = { exportedAt: todayIso(), maxes: state.maxes, sessions: state.sessionDocs };
+  var payload = { exportedAt: todayIso(), maxes: state.maxes, maxesUpdatedAt: state.maxesUpdatedAt||0, goals: state.goals, sessions: state.sessionDocs };
   var blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   var url = URL.createObjectURL(blob);
   var a = document.createElement("a");
@@ -754,11 +919,12 @@ document.getElementById("restoreInput").addEventListener("change", function(evt)
   reader.onload = function(){
     try{
       var data = JSON.parse(reader.result);
-      if(data.maxes) state.maxes = Object.assign({}, STARTING_MAXES, data.maxes);
+      if(data.maxes){ state.maxes = Object.assign({}, STARTING_MAXES, data.maxes); state.maxesUpdatedAt = data.maxesUpdatedAt || Date.now(); }
+      if(data.goals) state.goals = data.goals;
       if(data.sessions) state.sessionDocs = data.sessions;
       state.currentIndex = computeCurrentIndex();
       state.viewIndex = state.currentIndex;
-      persistSessions(); persistMaxes();
+      persistSessions(); persistMaxes(); persistGoals();
       touchLocalChange();
       render();
       flag.textContent = "Restored";
@@ -813,20 +979,25 @@ function renderAccountUI(){
 }
 
 function buildSyncPayload(){
-  return { updatedAt: Date.now(), maxes: state.maxes, sessions: state.sessionDocs };
+  return { updatedAt: Date.now(), maxes: state.maxes, maxesUpdatedAt: state.maxesUpdatedAt||0, goals: state.goals, sessions: state.sessionDocs };
 }
 function applyRemotePayload(payload){
   applyingRemote = true;
-  if(payload.maxes) state.maxes = Object.assign({}, STARTING_MAXES, payload.maxes);
-  if(payload.sessions) state.sessionDocs = payload.sessions || {};
+  if(payload.maxes){
+    var remoteMaxesAt = payload.maxesUpdatedAt || 0;
+    if(remoteMaxesAt >= (state.maxesUpdatedAt||0)){
+      state.maxes = Object.assign({}, STARTING_MAXES, payload.maxes);
+      state.maxesUpdatedAt = remoteMaxesAt;
+    }
+  }
+  if(payload.goals) state.goals = Object.assign({}, state.goals, payload.goals);
+  if(payload.sessions) state.sessionDocs = mergeSessionDocs(state.sessionDocs, payload.sessions);
   state.currentIndex = computeCurrentIndex();
   state.viewIndex = state.currentIndex;
-  persistSessions(); persistMaxes();
+  persistSessions(); persistMaxes(); persistGoals();
   render();
   applyingRemote = false;
 }
-function hasAnyLocalData(){ return Object.keys(state.sessionDocs||{}).length>0; }
-
 function pushToCloud(){
   if(!fbUser) return;
   var payload = buildSyncPayload();
@@ -858,13 +1029,10 @@ function startListening(uid){
 function reconcileOnSignIn(user){
   fb.getDoc(userDocRef(user.uid)).then(function(snap){
     if(snap.exists()){
-      var remote = snap.data();
-      if(hasAnyLocalData()){
-        var loadCloud = window.confirm("You already have data saved to this account. Load it here? This replaces what's on this device.\n\nChoose Cancel to keep this device's data and overwrite the cloud copy instead.");
-        if(loadCloud) applyRemotePayload(remote); else pushToCloud();
-      } else {
-        applyRemotePayload(remote);
-      }
+      // Merge rather than replace: whichever side saved each session most recently
+      // wins for that session, so neither device's work gets silently discarded.
+      applyRemotePayload(snap.data());
+      pushToCloud();
     } else {
       pushToCloud();
     }
@@ -952,7 +1120,7 @@ function renderSessionCard(){
 
   var list = document.getElementById("exList");
   list.innerHTML = "";
-  sess.exercises.forEach(function(ex){
+  sess.exercises.forEach(function(ex, i){
     var t = computeTarget(ex, sess, state.maxes);
     var saved = (doc.exercises && doc.exercises[ex.name]) || {};
     var row = document.createElement("div");
@@ -966,27 +1134,41 @@ function renderSessionCard(){
     right.className = "ex-inputs";
 
     if(t.kind === "weight"){
-      left.innerHTML += '<div class="ex-target">Target: '+sess.scheme+' &middot; '+fmtKg(t.weight)+t.suffix+'</div>';
+      left.innerHTML += '<div class="ex-target">Target: '+t.scheme+' &middot; '+fmtKg(t.weight)+t.suffix+'</div>';
+      var wLabelId = "w-"+sess.index+"-"+i;
       var wField = document.createElement("div"); wField.className="field";
-      wField.innerHTML = '<label>Weight (kg)</label>';
+      wField.innerHTML = '<label id="'+wLabelId+'">Weight (kg)</label>';
       var wInput = document.createElement("input"); wInput.type="number"; wInput.step="2.5";
-      wInput.value = (typeof saved.weight === "number") ? saved.weight : t.weight;
+      wInput.setAttribute("aria-label", ex.name+" weight (kg)");
+      if(typeof saved.weight === "number") wInput.value = saved.weight;
+      else wInput.placeholder = String(t.weight);
       wField.appendChild(wInput);
 
+      var rLabelId = "r-"+sess.index+"-"+i;
       var rField = document.createElement("div"); rField.className="field";
-      rField.innerHTML = '<label>Reps</label>';
+      rField.innerHTML = '<label id="'+rLabelId+'">Reps</label>';
       var rInput = document.createElement("input"); rInput.type="number"; rInput.step="1";
-      rInput.value = (typeof saved.reps === "number") ? saved.reps : (t.reps!==null ? t.reps : "");
+      rInput.setAttribute("aria-label", ex.name+" reps");
+      if(typeof saved.reps === "number") rInput.value = saved.reps;
+      else if(t.reps!==null) rInput.placeholder = String(t.reps);
       rField.appendChild(rInput);
 
       var exDebounce = makeDebouncer(650);
       function commit(){
-        var patch = { exercises: Object.assign({}, doc.exercises||{}) };
-        patch.exercises[ex.name] = {
-          weight: wInput.value===""?null:parseFloat(wInput.value),
-          reps: rInput.value===""?null:parseInt(rInput.value,10)
-        };
-        exDebounce(function(){ saveSession(sess, patch); });
+        // Read the latest saved doc when the debounce actually fires, not the
+        // snapshot from when the card was rendered: two exercise rows edited
+        // within the same debounce window would otherwise each save based on
+        // the same stale copy, and whichever fires last wipes the other's edit.
+        exDebounce(function(){
+          var latest = state.sessionDocs[sessionId(sess)] || {};
+          var patch = { exercises: Object.assign({}, latest.exercises||{}) };
+          patch.exercises[ex.name] = {
+            weight: wInput.value===""?null:parseFloat(wInput.value),
+            reps: rInput.value===""?null:parseInt(rInput.value,10)
+          };
+          saveSession(sess, patch);
+          refreshDerived();
+        });
       }
       wInput.addEventListener("input", commit);
       rInput.addEventListener("input", commit);
@@ -995,11 +1177,13 @@ function renderSessionCard(){
       left.innerHTML += '<div class="ex-target">Target: '+t.label+' &middot; '+t.desc+'</div>';
       var wrap = document.createElement("label"); wrap.className="chk-wrap";
       var cb = document.createElement("input"); cb.type="checkbox";
+      cb.setAttribute("aria-label", ex.name+" done");
       cb.checked = !!saved.done;
       var span = document.createElement("span"); span.textContent="Done";
       wrap.appendChild(cb); wrap.appendChild(span);
       cb.addEventListener("change", function(){
-        var patch = { exercises: Object.assign({}, doc.exercises||{}) };
+        var latest = state.sessionDocs[sessionId(sess)] || {};
+        var patch = { exercises: Object.assign({}, latest.exercises||{}) };
         patch.exercises[ex.name] = { done: cb.checked };
         saveSession(sess, patch);
       });
@@ -1048,12 +1232,20 @@ document.getElementById("todayBtn").addEventListener("click", function(){ state.
 
 document.getElementById("bwInput").addEventListener("input", function(){
   var sess = SESSIONS[state.viewIndex]; var val = this.value;
-  bwDebounce(function(){ saveSession(sess, { bodyweight: val===""?null:parseFloat(val) }); });
+  bwDebounce(function(){ saveSession(sess, { bodyweight: val===""?null:parseFloat(val) }); refreshDerived(); });
 });
 document.getElementById("feelInput").addEventListener("input", function(){
   var sess = SESSIONS[state.viewIndex]; var val = this.value;
   feelDebounce(function(){ saveSession(sess, { feeling: val }); });
 });
+
+/* Refreshes the header count and everything on the Stats tab after an edit to an
+   already-open session, without rebuilding the session card itself (which would
+   otherwise reset scroll position or drop focus out of the field you're typing in). */
+function refreshDerived(){
+  renderHeader();
+  renderStats();
+}
 function collectExercisesFromDom(sess){
   var doc = state.sessionDocs[sessionId(sess)] || {};
   var result = Object.assign({}, doc.exercises||{});
@@ -1120,6 +1312,25 @@ function renderHeader(){
   document.getElementById("headerDot").style.background = done>0 ? "var(--good)" : "var(--text-faint)";
 }
 
+function isProgrammeComplete(){
+  for(var i=0;i<SESSIONS.length;i++){
+    var d = state.sessionDocs[sessionId(SESSIONS[i])];
+    if(!d || !(d.completed || d.skipped)) return false;
+  }
+  return true;
+}
+
+function renderCompleteBanner(){
+  var banner = document.getElementById("completeBanner");
+  if(!isProgrammeComplete()){ banner.style.display = "none"; return; }
+  var p = computeProgressStats();
+  var maxLine = Object.keys(LIFT_LABELS).map(function(k){ return LIFT_LABELS[k]+" "+fmtKg(state.maxes[k]); }).join(", ");
+  document.getElementById("completeBannerText").textContent =
+    "All "+p.total+" sessions logged ("+p.completed+" completed, "+p.skipped+" skipped). Your current maxes: "+maxLine+
+    ". Check the Stats tab to see how far they've come since week 1, or set new maxes on the Account tab and start again on a fresh cycle.";
+  banner.style.display = "block";
+}
+
 /* ============================== MAXES PANEL ============================== */
 
 function renderMaxes(){
@@ -1134,6 +1345,7 @@ function renderMaxes(){
         '<div class="cur num">'+fmtKg(state.maxes[key])+'</div>';
       var input = document.createElement("input");
       input.type="number"; input.step="0.5"; input.placeholder="New max (kg)"; input.dataset.lift = key;
+      input.setAttribute("aria-label", "New "+LIFT_LABELS[key]+" max (kg)");
       item.appendChild(input);
       grid.appendChild(item);
     });
@@ -1157,14 +1369,88 @@ document.getElementById("acctSaveMaxesBtn").addEventListener("click", function()
   saveMaxesFromGrid("acctMaxGrid", "acctMaxSaveFlag");
 });
 
+/* ============================== GOALS ============================== */
+
+function renderGoals(){
+  var grid = document.getElementById("goalsGrid");
+  if(!grid) return;
+  grid.innerHTML = "";
+  Object.keys(LIFT_LABELS).forEach(function(key){
+    var item = document.createElement("div"); item.className="max-item";
+    var curGoal = state.goals[key];
+    item.innerHTML =
+      '<div class="lift-name">'+LIFT_LABELS[key]+'</div>'+
+      '<div class="cur num">'+(typeof curGoal==="number" ? fmtKg(curGoal) : "No goal set")+'</div>';
+    var input = document.createElement("input");
+    input.type="number"; input.step="0.5"; input.placeholder="Target (kg)"; input.dataset.lift = key;
+    input.setAttribute("aria-label", LIFT_LABELS[key]+" goal (kg)");
+    item.appendChild(input);
+    grid.appendChild(item);
+  });
+}
+
+document.getElementById("saveGoalsBtn").addEventListener("click", function(){
+  var inputs = document.querySelectorAll("#goalsGrid input");
+  var next = Object.assign({}, state.goals);
+  var changed = false;
+  inputs.forEach(function(inp){
+    if(inp.value !== ""){ next[inp.dataset.lift] = parseFloat(inp.value); changed = true; inp.value=""; }
+  });
+  if(!changed) return;
+  state.goals = next;
+  var ok = persistGoals();
+  var flag = document.getElementById("goalsSaveFlag");
+  flag.textContent = ok ? "Saved" : "Couldn't save (browser storage is blocked)";
+  if(ok){ setTimeout(function(){ flag.textContent=""; }, 1800); touchLocalChange(); }
+  renderGoals();
+  renderGoalProgress();
+});
+
+function renderGoalProgress(){
+  var host = document.getElementById("goalProgress");
+  if(!host) return;
+  host.innerHTML = "";
+  var anyGoal = Object.keys(state.goals||{}).some(function(k){ return typeof state.goals[k]==="number"; });
+  if(!anyGoal){ host.innerHTML = '<p class="empty-note">Set a target on the Account tab to track progress toward it here.</p>'; return; }
+  Object.keys(LIFT_LABELS).forEach(function(key){
+    var goal = state.goals[key];
+    if(typeof goal !== "number") return;
+    var cur = state.maxes[key];
+    var pct = Math.max(0, Math.min(100, Math.round((cur/goal)*100)));
+    var row = document.createElement("div"); row.className="block-stat-row";
+    var head = document.createElement("div"); head.className="block-stat-head";
+    head.innerHTML = '<span>'+LIFT_LABELS[key]+'</span><span>'+fmtKg(cur)+' of '+fmtKg(goal)+' &middot; '+pct+'%'+(cur>=goal?' &middot; goal hit':'')+'</span>';
+    var bar = document.createElement("div"); bar.className="progress-bar";
+    var fill = document.createElement("div"); fill.className="progress-bar-fill"; fill.style.width=pct+"%";
+    bar.appendChild(fill);
+    row.appendChild(head); row.appendChild(bar);
+    host.appendChild(row);
+  });
+}
+
 var epW = document.getElementById("epW"), epR = document.getElementById("epR"), epResult = document.getElementById("epResult");
+var epLift = document.getElementById("epLift"), epUseBtn = document.getElementById("epUseBtn");
+var epEstimate = null;
 function updateEpley(){
   var w = parseFloat(epW.value), r = parseFloat(epR.value);
-  if(!w || !r){ epResult.innerHTML = "Enter a weight and reps from a hard set (1-2 reps in reserve)."; return; }
-  var est = epley(w,r);
-  epResult.innerHTML = "Estimated max: <b>"+fmtKg(est)+"</b>. Round to the nearest number you'd actually use, then type it into the lift above.";
+  if(!w || !r){
+    epResult.innerHTML = "Enter a weight and reps from a hard set (1-2 reps in reserve).";
+    epEstimate = null; epUseBtn.disabled = true;
+    return;
+  }
+  epEstimate = roundPlate(epley(w,r));
+  epResult.innerHTML = "Estimated max: <b>"+fmtKg(epEstimate)+"</b>. \"Use this value\" fills it in as your new "+LIFT_LABELS[epLift.value]+" max below, ready to save.";
+  epUseBtn.disabled = false;
 }
 epW.addEventListener("input", updateEpley); epR.addEventListener("input", updateEpley);
+epLift.addEventListener("change", updateEpley);
+epUseBtn.addEventListener("click", function(){
+  if(epEstimate===null) return;
+  ["maxGrid","acctMaxGrid"].forEach(function(gridId){
+    var input = document.querySelector('#'+gridId+' input[data-lift="'+epLift.value+'"]');
+    if(input) input.value = epEstimate;
+  });
+});
 
 /* ============================== CHARTS (shared drawing code) ============================== */
 
@@ -1185,15 +1471,26 @@ function buildOneRmSeries(){
   }).filter(function(s){ return s.points.length>0; });
 }
 
+/* Points plotted at the last session index of their week, matching the chart's own
+   week-tick convention, so a weekly rollup lines up with the same x-axis as the
+   per-session charts. */
+function weekEndIndex(week){ return week*3-1; }
+
 function buildBwSeries(){
-  var pts = [];
+  var byWeek = {};
   SESSIONS.forEach(function(sess){
     var doc = state.sessionDocs[sessionId(sess)];
     if(doc && typeof doc.bodyweight==="number"){
-      pts.push({ x: sess.index, y: doc.bodyweight, label:"Wk "+sess.week+" "+sess.day, date: doc.completedAt });
+      if(!byWeek[sess.week]) byWeek[sess.week] = { sum:0, count:0 };
+      byWeek[sess.week].sum += doc.bodyweight;
+      byWeek[sess.week].count++;
     }
   });
-  return [{ name:"Bodyweight", color:"var(--brand)", points: pts }];
+  var pts = Object.keys(byWeek).map(function(wk){
+    var w = parseInt(wk,10);
+    return { x: weekEndIndex(w), y: Math.round((byWeek[wk].sum/byWeek[wk].count)*10)/10 };
+  }).sort(function(a,b){ return a.x-b.x; });
+  return [{ name:"Bodyweight (weekly average)", color:"var(--brand)", points: pts }];
 }
 
 function fmtChartVal(y, unit){
@@ -1286,7 +1583,7 @@ function drawLineChart(series, opts){
     lbl.setAttribute("font-size","11"); lbl.setAttribute("font-weight","600");
     lbl.setAttribute("fill",s.color); lbl.setAttribute("font-family","IBM Plex Sans, sans-serif");
     lbl.textContent = fmtChartVal(last.y, opts.yUnit);
-    if(series.length>1) svg.appendChild(lbl);
+    svg.appendChild(lbl);
   });
 
   svg.appendChild(hoverGroup);
@@ -1296,10 +1593,10 @@ function drawLineChart(series, opts){
   var tooltip = document.createElement("div"); tooltip.className="tooltip";
   wrapper.appendChild(svg); wrapper.appendChild(tooltip);
 
-  svg.addEventListener("mousemove", function(evt){
+  function showAt(clientX){
     var rect = svg.getBoundingClientRect();
     var scaleX = W/rect.width;
-    var mx = (evt.clientX-rect.left)*scaleX;
+    var mx = (clientX-rect.left)*scaleX;
     var frac = (mx-pad.l)/(W-pad.l-pad.r);
     var xVal = Math.round(xMin + frac*(xMax-xMin));
     if(xVal<xMin||xVal>xMax){ hoverGroup.setAttribute("opacity","0"); tooltip.style.opacity=0; return; }
@@ -1314,8 +1611,18 @@ function drawLineChart(series, opts){
     tooltip.style.opacity = 1;
     tooltip.style.left = (px(xVal)/scaleX)+"px";
     tooltip.innerHTML = lines.join("<br>");
-  });
-  svg.addEventListener("mouseleave", function(){ hoverGroup.setAttribute("opacity","0"); tooltip.style.opacity=0; });
+  }
+  function hide(){ hoverGroup.setAttribute("opacity","0"); tooltip.style.opacity=0; }
+
+  svg.addEventListener("mousemove", function(evt){ showAt(evt.clientX); });
+  svg.addEventListener("mouseleave", hide);
+  svg.addEventListener("touchstart", function(evt){
+    if(evt.touches && evt.touches.length){ showAt(evt.touches[0].clientX); evt.preventDefault(); }
+  }, { passive:false });
+  svg.addEventListener("touchmove", function(evt){
+    if(evt.touches && evt.touches.length){ showAt(evt.touches[0].clientX); evt.preventDefault(); }
+  }, { passive:false });
+  svg.addEventListener("touchend", hide);
 
   return wrapper;
 }
@@ -1333,8 +1640,8 @@ function computeProgressStats(){
   var completedDates = [];
   SESSIONS.forEach(function(sess){
     var doc = state.sessionDocs[sessionId(sess)];
-    if(doc && doc.completed){ completed++; if(doc.completedAt) completedDates.push(doc.completedAt); }
-    else if(doc && doc.skipped) skipped++;
+    if(doc && doc.skipped) skipped++;
+    else if(doc && doc.completed){ completed++; if(doc.completedAt) completedDates.push(doc.completedAt); }
   });
   var remaining = total-completed-skipped;
   var pct = Math.round(((completed+skipped)/total)*100);
@@ -1373,8 +1680,8 @@ function computeBlockBreakdown(){
       ["A","B","C"].forEach(function(day){
         var sess = SESSIONS.find(function(s){ return s.week===week && s.day===day; });
         var doc = state.sessionDocs[sessionId(sess)];
-        if(doc && doc.completed) completed++;
-        else if(doc && doc.skipped) skipped++;
+        if(doc && doc.skipped) skipped++;
+        else if(doc && doc.completed) completed++;
         else pending++;
       });
     }
@@ -1383,7 +1690,7 @@ function computeBlockBreakdown(){
 }
 
 function computeTonnageSeries(){
-  var pts = []; var cum=0;
+  var byWeek = {};
   SESSIONS.forEach(function(sess){
     var doc = state.sessionDocs[sessionId(sess)];
     if(!doc || !doc.exercises) return;
@@ -1392,9 +1699,12 @@ function computeTonnageSeries(){
       var e = doc.exercises[name];
       if(typeof e.weight==="number" && typeof e.reps==="number") tonnage += e.weight*e.reps;
     });
-    if(tonnage>0){ cum += tonnage; pts.push({x:sess.index, y:Math.round(cum)}); }
+    if(tonnage>0) byWeek[sess.week] = (byWeek[sess.week]||0) + tonnage;
   });
-  return [{ name:"Cumulative tonnage", color:"var(--brand)", points: pts }];
+  var pts = Object.keys(byWeek).map(function(wk){
+    return { x: weekEndIndex(parseInt(wk,10)), y: Math.round(byWeek[wk]) };
+  }).sort(function(a,b){ return a.x-b.x; });
+  return [{ name:"Weekly tonnage", color:"var(--brand)", points: pts }];
 }
 
 function computeTotalLifetimeTonnage(){
@@ -1408,6 +1718,56 @@ function computeTotalLifetimeTonnage(){
     });
   });
   return total;
+}
+
+/* ============================== STRENGTH STANDARDS ============================== */
+/* Rough, widely-cited bodyweight-ratio bands. Not personalised, not a diagnosis of
+   anything, just a compass: [novice-ceiling, intermediate-ceiling, advanced-ceiling],
+   ratio at or above the third number counts as the top band. */
+var STRENGTH_STANDARDS = {
+  backSquat: [1.0, 1.5, 2.0],
+  deadlift: [1.25, 1.75, 2.25],
+  benchPress: [0.75, 1.0, 1.5],
+  barbellRow: [0.75, 1.0, 1.25]
+};
+var STANDARD_TIERS = ["Novice","Intermediate","Advanced","Elite"];
+
+function tierFor(ratio, thresholds){
+  if(ratio < thresholds[0]) return 0;
+  if(ratio < thresholds[1]) return 1;
+  if(ratio < thresholds[2]) return 2;
+  return 3;
+}
+
+function getLatestBodyweight(){
+  var bw = null;
+  SESSIONS.forEach(function(sess){
+    var doc = state.sessionDocs[sessionId(sess)];
+    if(doc && typeof doc.bodyweight === "number") bw = doc.bodyweight;
+  });
+  return bw;
+}
+
+function renderStrengthStandards(){
+  var host = document.getElementById("strengthStandards");
+  if(!host) return;
+  host.innerHTML = "";
+  var bw = getLatestBodyweight();
+  if(!bw){ host.innerHTML = '<p class="empty-note">Log your bodyweight on a session to see this.</p>'; return; }
+  var list = document.createElement("div"); list.className="ex-list";
+  TREND_LIFTS.forEach(function(t){
+    var thresholds = STRENGTH_STANDARDS[t.key];
+    var ratio = Math.round((state.maxes[t.key]/bw)*100)/100;
+    var tier = tierFor(ratio, thresholds);
+    var row = document.createElement("div"); row.className="ex-row";
+    var left = document.createElement("div");
+    left.innerHTML = '<div class="ex-name">'+LIFT_LABELS[t.key]+'</div><div class="ex-note">'+ratio+'&times; bodyweight ('+fmtKg(state.maxes[t.key])+' at '+fmtKg(bw)+')</div>';
+    var right = document.createElement("div"); right.className="ex-inputs";
+    right.innerHTML = '<span class="target-badge">'+STANDARD_TIERS[tier]+'</span>';
+    row.appendChild(left); row.appendChild(right);
+    list.appendChild(row);
+  });
+  host.appendChild(list);
 }
 
 function computePRs(){
@@ -1429,10 +1789,101 @@ function computePRs(){
   });
 }
 
+/* What the programme's own percentages would prescribe for the combined total, using
+   today's maxes throughout. Lets you see whether you're actually ahead of or behind
+   the plan's own built-in progression, not just how your numbers look in isolation. */
+function buildPlannedTotalSeries(){
+  var perLift = {}; TREND_LIFTS.forEach(function(t){ perLift[t.key]=null; });
+  var pts = [];
+  SESSIONS.forEach(function(sess){
+    TREND_LIFTS.forEach(function(t){
+      var ex = sess.exercises.find(function(e){ return e.name===t.exerciseName; });
+      if(ex){
+        var tgt = computeTarget(ex, sess, state.maxes);
+        if(tgt.kind==="weight" && tgt.reps) perLift[t.key] = epley(tgt.weight, tgt.reps);
+      }
+    });
+    var vals = TREND_LIFTS.map(function(t){ return perLift[t.key]; });
+    if(vals.every(function(v){ return v!==null; })){
+      pushIfChanged(pts, sess.index, Math.round(vals.reduce(function(a,b){return a+b;},0)*10)/10);
+    }
+  });
+  return pts;
+}
+
+/* ============================== BLOCK COMPARISON ============================== */
+
+var BLOCK_COMPARISON_PAIRS = [[1,5],[2,6],[3,7],[4,8]];
+
+function bestLoggedWeightInBlock(blockN, exerciseName){
+  var best = null;
+  SESSIONS.forEach(function(sess){
+    if(sess.block.n !== blockN) return;
+    var hasEx = sess.exercises.some(function(e){ return e.name===exerciseName; });
+    if(!hasEx) return;
+    var doc = state.sessionDocs[sessionId(sess)];
+    if(!doc || !doc.exercises || !doc.exercises[exerciseName]) return;
+    var e = doc.exercises[exerciseName];
+    if(typeof e.weight === "number" && e.weight>0){
+      if(best===null || e.weight>best) best = e.weight;
+    }
+  });
+  return best;
+}
+
+function computeBlockComparison(){
+  return BLOCK_COMPARISON_PAIRS.map(function(pair){
+    var blockA = BLOCKS.find(function(b){ return b.n===pair[0]; });
+    var blockB = BLOCKS.find(function(b){ return b.n===pair[1]; });
+    var lifts = TREND_LIFTS.map(function(t){
+      var a = bestLoggedWeightInBlock(pair[0], t.exerciseName);
+      var b = bestLoggedWeightInBlock(pair[1], t.exerciseName);
+      var pct = (a!==null && b!==null && a>0) ? Math.round(((b-a)/a)*1000)/10 : null;
+      return { key:t.key, name: LIFT_LABELS[t.key], a:a, b:b, pct:pct };
+    });
+    return { nameA: stripAmp(blockA.name), nameB: stripAmp(blockB.name), lifts: lifts };
+  });
+}
+
+function renderBlockComparison(){
+  var host = document.getElementById("blockComparison");
+  if(!host) return;
+  host.innerHTML = "";
+  var pairs = computeBlockComparison();
+  var any = pairs.some(function(p){ return p.lifts.some(function(l){ return l.a!==null || l.b!==null; }); });
+  if(!any){ host.innerHTML = '<p class="empty-note">Log some lifts in the first half of the programme to start building this comparison.</p>'; return; }
+  pairs.forEach(function(p){
+    var row = document.createElement("div"); row.className="block-stat-row";
+    var head = document.createElement("div"); head.className="block-stat-head";
+    head.innerHTML = '<span>'+p.nameA+' &rarr; '+p.nameB+'</span>';
+    row.appendChild(head);
+    var list = document.createElement("div"); list.className="ex-list";
+    p.lifts.forEach(function(l){
+      var r = document.createElement("div"); r.className="ex-row";
+      var left = document.createElement("div"); left.innerHTML = '<div class="ex-name">'+l.name+'</div>';
+      var right = document.createElement("div"); right.className="ex-inputs";
+      if(l.a===null && l.b===null){
+        right.innerHTML = '<span class="muted">Not logged yet</span>';
+      } else {
+        var deltaHtml = "";
+        if(l.pct!==null){
+          var good = l.pct>=0;
+          deltaHtml = ' <span class="target-badge" style="color:'+(good?"var(--good)":"var(--danger)")+'; background:'+(good?"var(--good-soft)":"var(--warn-soft)")+';">'+(good?"+":"")+l.pct+'%</span>';
+        }
+        right.innerHTML = '<span>'+(l.a!==null?fmtKg(l.a):"Not logged")+' &rarr; '+(l.b!==null?fmtKg(l.b):"Not logged yet")+'</span>'+deltaHtml;
+      }
+      r.appendChild(left); r.appendChild(right);
+      list.appendChild(r);
+    });
+    row.appendChild(list);
+    host.appendChild(row);
+  });
+}
+
 function computeRatioSeries(){
   var perLift = {}; TREND_LIFTS.forEach(function(t){ perLift[t.key]=null; });
   var lastBw = null;
-  var squatBw=[], dlSquat=[], total=[];
+  var squatBw=[], dlSquat=[], rowBench=[], total=[], relIndex=[];
   SESSIONS.forEach(function(sess){
     var doc = state.sessionDocs[sessionId(sess)];
     if(doc){
@@ -1452,12 +1903,17 @@ function computeRatioSeries(){
     if(perLift.backSquat!==null && perLift.deadlift!==null){
       pushIfChanged(dlSquat, sess.index, Math.round((perLift.deadlift/perLift.backSquat)*100)/100);
     }
+    if(perLift.barbellRow!==null && perLift.benchPress!==null){
+      pushIfChanged(rowBench, sess.index, Math.round((perLift.barbellRow/perLift.benchPress)*100)/100);
+    }
     var vals = TREND_LIFTS.map(function(t){ return perLift[t.key]; });
     if(vals.every(function(v){ return v!==null; })){
-      pushIfChanged(total, sess.index, Math.round(vals.reduce(function(a,b){return a+b;},0)*10)/10);
+      var sum = vals.reduce(function(a,b){return a+b;},0);
+      pushIfChanged(total, sess.index, Math.round(sum*10)/10);
+      if(lastBw!==null) pushIfChanged(relIndex, sess.index, Math.round((sum/lastBw)*100)/100);
     }
   });
-  return { squatBw:squatBw, dlSquat:dlSquat, total: total };
+  return { squatBw:squatBw, dlSquat:dlSquat, rowBench:rowBench, total: total, relIndex: relIndex };
 }
 
 function statTile(label, value){
@@ -1505,8 +1961,23 @@ function renderStatsCharts(){
   var ratios = computeRatioSeries();
 
   var boxTotal = document.getElementById("totalChartBox");
-  if(ratios.total.length===0) boxTotal.innerHTML='<p class="empty-note">Log all four main lifts at least once each to see your combined total.</p>';
-  else { boxTotal.innerHTML=""; boxTotal.appendChild(drawLineChart([{name:"Total",color:"var(--brand)",points:ratios.total}],{yUnit:"kg",width:860,height:220})); }
+  var totalLegend = document.getElementById("totalChartLegend");
+  if(ratios.total.length===0){
+    boxTotal.innerHTML='<p class="empty-note">Log all four main lifts at least once each to see your combined total.</p>';
+    totalLegend.innerHTML="";
+  } else {
+    var totalSeries = [{name:"Actual", color:"var(--brand)", points:ratios.total}];
+    var planned = buildPlannedTotalSeries();
+    if(planned.length>0) totalSeries.push({name:"Plan (at today's maxes)", color:"var(--text-faint)", points:planned});
+    totalLegend.innerHTML="";
+    totalSeries.forEach(function(s){
+      var it=document.createElement("div"); it.className="leg-item";
+      it.innerHTML='<span class="leg-swatch" style="background:'+s.color+'"></span>'+s.name;
+      totalLegend.appendChild(it);
+    });
+    boxTotal.innerHTML="";
+    boxTotal.appendChild(drawLineChart(totalSeries,{yUnit:"kg",width:860,height:220}));
+  }
 
   var boxDlSq = document.getElementById("ratioDlSquatBox");
   if(ratios.dlSquat.length===0) boxDlSq.innerHTML='<p class="empty-note">Log Back Squat and Deadlift at least once each.</p>';
@@ -1516,9 +1987,17 @@ function renderStatsCharts(){
   if(ratios.squatBw.length===0) boxSqBw.innerHTML='<p class="empty-note">Log a Back Squat and your bodyweight at least once each.</p>';
   else { boxSqBw.innerHTML=""; boxSqBw.appendChild(drawLineChart([{name:"Squat : Bodyweight",color:"var(--series-squat)",points:ratios.squatBw}],{yUnit:"x",width:860,height:180})); }
 
+  var boxRowBench = document.getElementById("ratioRowBenchBox");
+  if(ratios.rowBench.length===0) boxRowBench.innerHTML='<p class="empty-note">Log Barbell Row and Bench Press at least once each.</p>';
+  else { boxRowBench.innerHTML=""; boxRowBench.appendChild(drawLineChart([{name:"Row : Bench",color:"var(--series-row)",points:ratios.rowBench}],{yUnit:"x",width:860,height:180})); }
+
+  var boxRel = document.getElementById("relIndexBox");
+  if(ratios.relIndex.length===0) boxRel.innerHTML='<p class="empty-note">Log all four main lifts and your bodyweight at least once each.</p>';
+  else { boxRel.innerHTML=""; boxRel.appendChild(drawLineChart([{name:"Total : Bodyweight",color:"var(--brand)",points:ratios.relIndex}],{yUnit:"x",width:860,height:200})); }
+
   var tonnage = computeTonnageSeries();
   var tonnageBox = document.getElementById("tonnageChartBox");
-  if(tonnage[0].points.length===0) tonnageBox.innerHTML='<p class="empty-note">Log a weight and reps on any lift to see cumulative tonnage here.</p>';
+  if(tonnage[0].points.length===0) tonnageBox.innerHTML='<p class="empty-note">Log a weight and reps on any lift to see weekly tonnage here.</p>';
   else { tonnageBox.innerHTML=""; tonnageBox.appendChild(drawLineChart(tonnage,{yUnit:"kg",width:860,height:220,area:true})); }
 
   var tGrid = document.getElementById("tonnageGrid");
@@ -1526,7 +2005,43 @@ function renderStatsCharts(){
   tGrid.appendChild(statTile("Lifetime tonnage", fmtKg(computeTotalLifetimeTonnage())));
 }
 
+function computeHeaviestSession(){
+  var best = null, bestSess = null;
+  SESSIONS.forEach(function(sess){
+    var doc = state.sessionDocs[sessionId(sess)];
+    if(!doc || !doc.exercises) return;
+    var tonnage = 0;
+    Object.keys(doc.exercises).forEach(function(name){
+      var e = doc.exercises[name];
+      if(typeof e.weight==="number" && typeof e.reps==="number") tonnage += e.weight*e.reps;
+    });
+    if(tonnage>0 && (best===null || tonnage>best)){ best = tonnage; bestSess = sess; }
+  });
+  return { tonnage: best, sess: bestSess };
+}
+
+function computeBestStreak(){
+  var best=0, cur=0;
+  SESSIONS.forEach(function(sess){
+    var doc = state.sessionDocs[sessionId(sess)];
+    if(doc && doc.completed){ cur++; if(cur>best) best=cur; }
+    else cur = 0;
+  });
+  return best;
+}
+
+function renderBonusRecords(){
+  var host = document.getElementById("bonusRecordsGrid");
+  if(!host) return;
+  host.innerHTML = "";
+  var heaviest = computeHeaviestSession();
+  var bestStreak = computeBestStreak();
+  host.appendChild(statTile("Heaviest session", heaviest.tonnage ? fmtKg(Math.round(heaviest.tonnage))+" (Wk "+heaviest.sess.week+" "+heaviest.sess.day+")" : "None yet"));
+  host.appendChild(statTile("Best streak", bestStreak+" session"+(bestStreak===1?"":"s")));
+}
+
 function renderPRs(){
+  renderBonusRecords();
   var prs = computePRs();
   var host = document.getElementById("prList");
   host.innerHTML="";
@@ -1547,6 +2062,26 @@ function renderPRs(){
   });
 }
 
+function renderHeatmap(){
+  var host = document.getElementById("yearHeatmap");
+  if(!host) return;
+  host.innerHTML = "";
+  SESSIONS.forEach(function(sess){
+    var doc = state.sessionDocs[sessionId(sess)];
+    var status = doc && doc.skipped ? "skipped" : (doc && doc.completed ? "done" : "pending");
+    var cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "cell "+status+(sess.index===state.currentIndex ? " current" : "");
+    cell.title = "Week "+sess.week+" Day "+sess.day+": "+(status==="done"?"Completed":status==="skipped"?"Skipped":"Not done yet");
+    cell.setAttribute("aria-label", cell.title);
+    cell.addEventListener("click", function(){
+      state.viewIndex = sess.index; renderSessionCard();
+      document.querySelector('.tab-btn[data-tab="today"]').click();
+    });
+    host.appendChild(cell);
+  });
+}
+
 function renderConsistency(){
   var streak = computeStreak();
   var grid = document.getElementById("consistencyGrid");
@@ -1555,6 +2090,7 @@ function renderConsistency(){
   var weeksElapsed = Math.min(TOTAL_WEEKS, Math.ceil((p.completed+p.skipped)/3));
   grid.appendChild(statTile("Current streak", streak+" session"+(streak===1?"":"s")));
   grid.appendChild(statTile("Weeks worked through", weeksElapsed+" / "+TOTAL_WEEKS));
+  renderHeatmap();
 
   var host = document.getElementById("blockStats");
   host.innerHTML="";
@@ -1576,12 +2112,17 @@ function renderConsistency(){
 
 function renderStats(){
   renderProgressStats();
+  renderGoalProgress();
   renderStatsCharts();
+  renderBlockComparison();
+  renderStrengthStandards();
   renderPRs();
   renderConsistency();
 }
 
 /* ============================== BROWSER ============================== */
+
+var openBlocks = { 1:true }; // which blocks are expanded in "Browse the programme", survives re-renders
 
 function renderBrowser(){
   var host = document.getElementById("blockBrowser");
@@ -1589,12 +2130,13 @@ function renderBrowser(){
   var eyebrow = document.getElementById("browseEyebrow");
   if(eyebrow) eyebrow.textContent = "All "+SESSIONS.length+" sessions";
   BLOCKS.forEach(function(block, bi){
+    var isOpen = !!openBlocks[block.n];
     var group = document.createElement("div"); group.className="block-group";
-    var head = document.createElement("div"); head.className="block-head"+(bi===0?" open":"");
+    var head = document.createElement("div"); head.className="block-head"+(isOpen?" open":"");
     head.innerHTML =
       '<span>Block '+block.n+': '+stripAmp(block.name)+' (Weeks '+block.weekStart+'-'+(block.weekStart+block.weeks-1)+')</span>'+
       '<svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    var body = document.createElement("div"); body.className="block-body"+(bi===0?" open":"");
+    var body = document.createElement("div"); body.className="block-body"+(isOpen?" open":"");
     for(var wi=0; wi<block.weeks; wi++){
       var week = block.weekStart+wi;
       var wRow = document.createElement("div"); wRow.className="week-row";
@@ -1617,10 +2159,11 @@ function renderBrowser(){
       });
       body.appendChild(wRow);
     }
-    head.addEventListener("click", function(h,b){ return function(){
+    head.addEventListener("click", function(h,b,blockN){ return function(){
       var willOpen = !h.classList.contains("open");
       h.classList.toggle("open", willOpen); b.classList.toggle("open", willOpen);
-    }; }(head,body));
+      openBlocks[blockN] = willOpen;
+    }; }(head,body,block.n));
     group.appendChild(head); group.appendChild(body);
     host.appendChild(group);
   });
@@ -1630,12 +2173,15 @@ function renderBrowser(){
 
 function render(){
   renderHeader();
+  renderCompleteBanner();
   renderSessionCard();
   renderMaxes();
+  renderGoals();
   renderStats();
   renderBrowser();
 }
 
+initTheme();
 loadLocal();
 state.viewIndex = state.currentIndex;
 render();
