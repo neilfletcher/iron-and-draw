@@ -13,6 +13,16 @@
   gtag('js', new Date());
   gtag('config', 'G-JF54HQGVLT');
 </script>
+<script>
+  // Usage events for the admin dashboard: what was done here, never who did it.
+  window.ssTrack = function (name, detail) {
+    try { if (window.gtag) gtag('event', name, detail ? { detail: String(detail).slice(0, 60) } : {}); } catch (e) {}
+  };
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest && e.target.closest('[data-tab]');
+    if (t) window.ssTrack('tab_viewed', t.getAttribute('data-tab'));
+  }, true);
+</script>
 <style>
   :root{
     color-scheme:light;
@@ -867,6 +877,7 @@ function mergeSessionDocs(local, remote){
 }
 
 function saveSession(sess, patch){
+  if (!window.__ssWorkout && window.ssTrack) { window.__ssWorkout = 1; window.ssTrack("workout_logged"); }
   var id = sessionId(sess);
   var existing = state.sessionDocs[id] || { exercises:{} };
   var merged = Object.assign({}, existing, patch);
